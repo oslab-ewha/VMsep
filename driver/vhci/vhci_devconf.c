@@ -106,9 +106,28 @@ setup_intf(USBD_INTERFACE_INFORMATION *intf, PUSB_CONFIGURATION_DESCRIPTOR dsc_c
 NTSTATUS
 setup_config(PUSB_CONFIGURATION_DESCRIPTOR dsc_conf, PUSBD_INTERFACE_INFORMATION info_intf, PVOID end_info_intf, UCHAR speed)
 {
+<<<<<<< HEAD
 	unsigned int	i;
 
 	for (i = 0; i < dsc_conf->bNumInterfaces; i++) {
+=======
+	PUSB_CONFIGURATION_DESCRIPTOR	dsc_conf;
+	PUSBD_INTERFACE_INFORMATION	info_intf;
+	/*
+	 * The end position of _URB_SELECT_CONFIGURATION, with which
+	 * valid count of info_intf can be detected.
+	 */
+	PVOID	end_urb_selc;
+	unsigned int	i;
+
+	/* assign meaningless value, handle value is not used */
+	urb_selc->ConfigurationHandle = (USBD_CONFIGURATION_HANDLE)0x12345678;
+
+	dsc_conf = urb_selc->ConfigurationDescriptor;
+	end_urb_selc = (PUCHAR)urb_selc + urb_selc->Hdr.Length;
+	info_intf = &urb_selc->Interface;
+	for (i = 0; i < urb_selc->ConfigurationDescriptor->bNumInterfaces; i++) {
+>>>>>>> cf70c86... vhci, fix urb selection error
 		NTSTATUS	status;
 
 		if ((status = setup_intf(info_intf, dsc_conf, speed)) != STATUS_SUCCESS)
@@ -116,7 +135,11 @@ setup_config(PUSB_CONFIGURATION_DESCRIPTOR dsc_conf, PUSBD_INTERFACE_INFORMATION
 
 		info_intf = NEXT_USBD_INTERFACE_INFO(info_intf);
 		/* urb_selc may have less info_intf than bNumInterfaces in conf desc */
+<<<<<<< HEAD
 		if ((PVOID)info_intf >= end_info_intf)
+=======
+		if ((PVOID)info_intf >= end_urb_selc)
+>>>>>>> cf70c86... vhci, fix urb selection error
 			break;
 	}
 
