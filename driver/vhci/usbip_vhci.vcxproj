@@ -25,6 +25,7 @@
     <ClCompile Include="vhci_devconf.c" />
     <ClCompile Include="vhci_internal_ioctl.c" />
     <ClCompile Include="vhci_ioctl.c" />
+<<<<<<< HEAD
     <ClCompile Include="vhci_ioctl_usrreq.c" />
     <ClCompile Include="vhci_ioctl_vhci.c" />
     <ClCompile Include="vhci_ioctl_vhub.c" />
@@ -40,6 +41,8 @@
     <ClCompile Include="vhci_pnp_start.c" />
     <ClCompile Include="vhci_pnp_vpdo.c" />
     <ClCompile Include="vhci_vhub.c" />
+=======
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
     <ClCompile Include="vhci_vpdo.c" />
     <ClCompile Include="vhci_read.c" />
     <ClCompile Include="vhci_vpdo_dsc.c" />

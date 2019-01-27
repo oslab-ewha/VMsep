@@ -5,7 +5,11 @@
 #include "usbd_helper.h"
 
 extern struct urb_req *
+<<<<<<< HEAD
 find_pending_urbr(pvpdo_dev_t vpdo);
+=======
+find_pending_urbr(pusbip_vpdo_dev_t vpdo);
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 
 extern void
 set_cmd_submit_usbip_header(struct usbip_header *h, unsigned long seqnum, unsigned int devid,
@@ -283,7 +287,11 @@ store_urb_get_intf_desc(PIRP irp, PURB urb, struct urb_req *urbr)
 }
 
 static NTSTATUS
+<<<<<<< HEAD
 store_urb_class_vendor_partial(pvpdo_dev_t vpdo, PIRP irp, PURB urb)
+=======
+store_urb_class_vendor_partial(pusbip_vpdo_dev_t vpdo, PIRP irp, PURB urb)
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 {
 	struct _URB_CONTROL_VENDOR_OR_CLASS_REQUEST	*urb_vc = &urb->UrbControlVendorClassRequest;
 	PVOID	dst;
@@ -432,7 +440,11 @@ store_urb_select_interface(PIRP irp, PURB urb, struct urb_req *urbr)
 }
 
 static NTSTATUS
+<<<<<<< HEAD
 store_urb_bulk_partial(pvpdo_dev_t vpdo, PIRP irp, PURB urb)
+=======
+store_urb_bulk_partial(pusbip_vpdo_dev_t vpdo, PIRP irp, PURB urb)
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 {
 	struct _URB_BULK_OR_INTERRUPT_TRANSFER	*urb_bi = &urb->UrbBulkOrInterruptTransfer;
 	PVOID	dst, src;
@@ -544,7 +556,11 @@ get_iso_payload_len(struct _URB_ISOCH_TRANSFER *urb_iso)
 }
 
 static NTSTATUS
+<<<<<<< HEAD
 store_urb_iso_partial(pvpdo_dev_t vpdo, PIRP irp, PURB urb)
+=======
+store_urb_iso_partial(pusbip_vpdo_dev_t vpdo, PIRP irp, PURB urb)
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 {
 	struct _URB_ISOCH_TRANSFER	*urb_iso = &urb->UrbIsochronousTransfer;
 	ULONG	len_iso;
@@ -559,6 +575,10 @@ store_urb_iso_partial(pvpdo_dev_t vpdo, PIRP irp, PURB urb)
 	copy_iso_data(dst, urb_iso);
 	vpdo->len_sent_partial = 0;
 	irp->IoStatus.Information = len_iso;
+<<<<<<< HEAD
+=======
+	vpdo->len_sent_partial = 0;
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 
 	return STATUS_SUCCESS;
 }
@@ -823,12 +843,15 @@ store_urbr_partial(PIRP irp, struct urb_req *urbr)
 	case URB_FUNCTION_VENDOR_INTERFACE:
 	case URB_FUNCTION_VENDOR_ENDPOINT:
 		status = store_urb_class_vendor_partial(urbr->vpdo, irp, urb);
+<<<<<<< HEAD
 		break;
 	case URB_FUNCTION_CONTROL_TRANSFER:
 		status = store_urb_control_transfer_partial(urbr->vpdo, irp, urb);
 		break;
 	case URB_FUNCTION_CONTROL_TRANSFER_EX:
 		status = store_urb_control_transfer_ex_partial(urbr->vpdo, irp, urb);
+=======
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 		break;
 	default:
 		irp->IoStatus.Information = 0;
@@ -920,14 +943,21 @@ on_pending_irp_read_cancelled(PDEVICE_OBJECT devobj, PIRP irp_read)
 }
 
 static NTSTATUS
+<<<<<<< HEAD
 process_read_irp(pvpdo_dev_t vpdo, PIRP read_irp)
+=======
+process_read_irp(pusbip_vpdo_dev_t vpdo, PIRP read_irp)
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 {
 	struct urb_req	*urbr;
 	KIRQL	oldirql;
 	NTSTATUS status;
 
+<<<<<<< HEAD
 	DBGI(DBG_GENERAL | DBG_READ, "process_read_irp: Enter\n");
 
+=======
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 	KeAcquireSpinLock(&vpdo->lock_urbr, &oldirql);
 	if (vpdo->pending_read_irp) {
 		KeReleaseSpinLock(&vpdo->lock_urbr, oldirql);
@@ -953,7 +983,12 @@ process_read_irp(pvpdo_dev_t vpdo, PIRP read_irp)
 			IoReleaseCancelSpinLock(oldirql_cancel);
 			KeReleaseSpinLock(&vpdo->lock_urbr, oldirql);
 			IoMarkIrpPending(read_irp);
+<<<<<<< HEAD
 
+=======
+			vpdo->pending_read_irp = read_irp;
+			KeReleaseSpinLock(&vpdo->lock_urbr, oldirql);
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 			return STATUS_PENDING;
 		}
 		vpdo->urbr_sent_partial = urbr;
@@ -965,6 +1000,7 @@ process_read_irp(pvpdo_dev_t vpdo, PIRP read_irp)
 	}
 
 	if (status != STATUS_SUCCESS) {
+<<<<<<< HEAD
 		RemoveEntryListInit(&urbr->list_all);
 		KeReleaseSpinLock(&vpdo->lock_urbr, oldirql);
 
@@ -983,6 +1019,15 @@ process_read_irp(pvpdo_dev_t vpdo, PIRP read_irp)
 				IoCompleteRequest(irp, IO_NO_INCREMENT);
 			}
 		}
+=======
+		RemoveEntryList(&urbr->list_all);
+		KeReleaseSpinLock(&vpdo->lock_urbr, oldirql);
+
+		IoSetCancelRoutine(urbr->irp, NULL);
+		urbr->irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
+		IoCompleteRequest(urbr->irp, IO_NO_INCREMENT);
+		ExFreeToNPagedLookasideList(&g_lookaside, urbr);
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 	}
 	else {
 		if (vpdo->len_sent_partial == 0) {
@@ -997,25 +1042,41 @@ process_read_irp(pvpdo_dev_t vpdo, PIRP read_irp)
 PAGEABLE NTSTATUS
 vhci_read(__in PDEVICE_OBJECT devobj, __in PIRP irp)
 {
+<<<<<<< HEAD
 	pvhci_dev_t	vhci;
 	pvpdo_dev_t	vpdo;
+=======
+	pusbip_vhub_dev_t	vhub;
+	pusbip_vpdo_dev_t	vpdo;
+	pdev_common_t		devcom;
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 	PIO_STACK_LOCATION	irpstack;
 	NTSTATUS		status;
 
 	PAGED_CODE();
 
+<<<<<<< HEAD
 	irpstack = IoGetCurrentIrpStackLocation(irp);
 
 	DBGI(DBG_GENERAL | DBG_READ, "vhci_read: Enter: len:%u, irp:%p\n", irpstack->Parameters.Read.Length, irp);
 
 	if (!IS_DEVOBJ_VHCI(devobj)) {
 		DBGE(DBG_READ, "read for non-vhci is not allowed\n");
+=======
+	devcom = (pdev_common_t)devobj->DeviceExtension;
+
+	DBGI(DBG_GENERAL | DBG_READ, "vhci_read: Enter\n");
+
+	if (!devcom->is_vhub) {
+		DBGE(DBG_READ, "read for vhub is not allowed\n");
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 
 		irp->IoStatus.Status = STATUS_INVALID_DEVICE_REQUEST;
 		IoCompleteRequest(irp, IO_NO_INCREMENT);
 		return STATUS_INVALID_DEVICE_REQUEST;
 	}
 
+<<<<<<< HEAD
 	vhci = DEVOBJ_TO_VHCI(devobj);
 
 	// Check to see whether the bus is removed
@@ -1025,16 +1086,38 @@ vhci_read(__in PDEVICE_OBJECT devobj, __in PIRP irp)
 	}
 	vpdo = irpstack->FileObject->FsContext;
 	if (vpdo == NULL || !vpdo->plugged)
+=======
+	vhub = (pusbip_vhub_dev_t)devobj->DeviceExtension;
+
+	inc_io_vhub(vhub);
+
+	// Check to see whether the bus is removed
+	if (vhub->common.DevicePnPState == Deleted) {
+		status = STATUS_NO_SUCH_DEVICE;
+		goto END;
+	}
+	irpstack = IoGetCurrentIrpStackLocation(irp);
+	vpdo = irpstack->FileObject->FsContext;
+	if (vpdo == NULL || !vpdo->Present)
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 		status = STATUS_INVALID_DEVICE_REQUEST;
 	else
 		status = process_read_irp(vpdo, irp);
 
 END:
+<<<<<<< HEAD
 	DBGI(DBG_GENERAL | DBG_READ, "vhci_read: Leave: irp:%p, status:%s\n", irp, dbg_ntstatus(status));
+=======
+	DBGI(DBG_GENERAL | DBG_READ, "vhci_read: Leave: %s\n", dbg_ntstatus(status));
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 	if (status != STATUS_PENDING) {
 		irp->IoStatus.Status = status;
 		IoCompleteRequest(irp, IO_NO_INCREMENT);
 	}
+<<<<<<< HEAD
 
+=======
+	dec_io_vhub(vhub);
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 	return status;
 }

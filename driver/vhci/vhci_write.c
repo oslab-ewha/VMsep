@@ -5,6 +5,7 @@
 #include "usbd_helper.h"
 
 extern struct urb_req *
+<<<<<<< HEAD
 find_sent_urbr(pvpdo_dev_t vpdo, struct usbip_header *hdr);
 extern NTSTATUS
 try_to_cache_descriptor(pvpdo_dev_t vpdo, struct _URB_CONTROL_DESCRIPTOR_REQUEST* urb_cdr, PUSB_COMMON_DESCRIPTOR dsc);
@@ -12,6 +13,9 @@ extern NTSTATUS
 vpdo_select_config(pvpdo_dev_t vpdo, struct _URB_SELECT_CONFIGURATION *urb_selc);
 extern NTSTATUS
 vpdo_select_interface(pvpdo_dev_t vpdo, PUSBD_INTERFACE_INFORMATION info_intf);
+=======
+find_sent_urbr(pusbip_vpdo_dev_t vpdo, struct usbip_header *hdr);
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 
 static BOOLEAN
 save_iso_desc(struct _URB_ISOCH_TRANSFER *urb, struct usbip_iso_packet_descriptor *iso_desc)
@@ -70,8 +74,13 @@ copy_iso_data(char *dest, ULONG dest_len, char *src, ULONG src_len, struct _URB_
 	}
 }
 
+<<<<<<< HEAD
 void
 post_get_desc(pvpdo_dev_t vpdo, PURB urb)
+=======
+static NTSTATUS
+post_select_config(pusbip_vpdo_dev_t vpdo, PURB urb)
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 {
 	struct _URB_CONTROL_DESCRIPTOR_REQUEST	*urb_cdr = &urb->UrbControlDescriptorRequest;
 	PUSB_COMMON_DESCRIPTOR	dsc;
@@ -86,6 +95,7 @@ post_get_desc(pvpdo_dev_t vpdo, PURB urb)
 	try_to_cache_descriptor(vpdo, urb_cdr, dsc);
 }
 
+<<<<<<< HEAD
 static NTSTATUS
 post_select_config(pvpdo_dev_t vpdo, PURB urb)
 {
@@ -98,6 +108,27 @@ post_select_interface(pvpdo_dev_t vpdo, PURB urb)
 	struct _URB_SELECT_INTERFACE	*urb_seli = &urb->UrbSelectInterface;
 
 	return vpdo_select_interface(vpdo, &urb_seli->Interface);
+=======
+	RtlCopyMemory(dsc_conf, urb_selc->ConfigurationDescriptor, len);
+	if (vpdo->dsc_conf)
+		ExFreePoolWithTag(vpdo->dsc_conf, USBIP_VHCI_POOL_TAG);
+	vpdo->dsc_conf = dsc_conf;
+
+	return select_config(urb_selc, vpdo->speed);
+}
+
+static NTSTATUS
+post_select_interface(pusbip_vpdo_dev_t vpdo, PURB urb)
+{
+	struct _URB_SELECT_INTERFACE	*urb_seli = &urb->UrbSelectInterface;
+
+	if (vpdo->dsc_conf == NULL) {
+		DBGW(DBG_WRITE, "post_select_interface: empty configuration descriptor\n");
+		return STATUS_INVALID_DEVICE_REQUEST;
+	}
+
+	return select_interface(urb_seli, vpdo->dsc_conf, vpdo->speed);
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 }
 
 static NTSTATUS
@@ -289,7 +320,11 @@ store_urb_data(PURB urb, struct usbip_header *hdr)
 }
 
 static NTSTATUS
+<<<<<<< HEAD
 process_urb_res_submit(pvpdo_dev_t vpdo, PURB urb, struct usbip_header *hdr)
+=======
+process_urb_res_submit(pusbip_vpdo_dev_t vpdo, PURB urb, struct usbip_header *hdr)
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 {
 	NTSTATUS	status;
 
@@ -398,7 +433,11 @@ get_usbip_hdr_from_write_irp(PIRP irp)
 }
 
 static NTSTATUS
+<<<<<<< HEAD
 process_write_irp(pvpdo_dev_t vpdo, PIRP write_irp)
+=======
+process_write_irp(pusbip_vpdo_dev_t vpdo, PIRP irp)
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 {
 	struct usbip_header	*hdr;
 	struct urb_req	*urbr;
@@ -445,27 +484,46 @@ process_write_irp(pvpdo_dev_t vpdo, PIRP write_irp)
 }
 
 PAGEABLE NTSTATUS
+<<<<<<< HEAD
 vhci_write(__in PDEVICE_OBJECT devobj, __in PIRP irp)
 {
 	pvhci_dev_t	vhci;
 	pvpdo_dev_t	vpdo;
 	PIO_STACK_LOCATION	irpstack;
+=======
+vhci_write(__in PDEVICE_OBJECT devobj, __in PIRP Irp)
+{
+	pusbip_vhub_dev_t	vhub;
+	pusbip_vpdo_dev_t	vpdo;
+	pdev_common_t		devcom;
+	PIO_STACK_LOCATION	stackirp;
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 	NTSTATUS		status;
 
 	PAGED_CODE();
 
+<<<<<<< HEAD
 	irpstack = IoGetCurrentIrpStackLocation(irp);
 
 	DBGI(DBG_GENERAL | DBG_WRITE, "vhci_write: Enter: len:%u, irp:%p\n", irpstack->Parameters.Write.Length, irp);
 
 	if (!IS_DEVOBJ_VHCI(devobj)) {
 		DBGE(DBG_WRITE, "write for non-vhci is not allowed\n");
+=======
+	devcom = (pdev_common_t)devobj->DeviceExtension;
+
+	DBGI(DBG_GENERAL | DBG_WRITE, "vhci_write: Enter\n");
+
+	if (!devcom->is_vhub) {
+		DBGE(DBG_WRITE, "write for vhub is not allowed\n");
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 
 		irp->IoStatus.Status = STATUS_INVALID_DEVICE_REQUEST;
 		IoCompleteRequest(irp, IO_NO_INCREMENT);
 		return STATUS_INVALID_DEVICE_REQUEST;
 	}
 
+<<<<<<< HEAD
 	vhci = DEVOBJ_TO_VHCI(devobj);
 
 	if (vhci->common.DevicePnPState == Deleted) {
@@ -483,6 +541,29 @@ END:
 	DBGI(DBG_WRITE, "vhci_write: Leave: irp:%p, status:%s\n", irp, dbg_ntstatus(status));
 	irp->IoStatus.Status = status;
 	IoCompleteRequest(irp, IO_NO_INCREMENT);
+=======
+	vhub = (pusbip_vhub_dev_t)devobj->DeviceExtension;
+
+	inc_io_vhub(vhub);
+
+	if (vhub->common.DevicePnPState == Deleted) {
+		status = STATUS_NO_SUCH_DEVICE;
+		goto END;
+	}
+	stackirp = IoGetCurrentIrpStackLocation(Irp);
+	vpdo = stackirp->FileObject->FsContext;
+	if (vpdo == NULL || !vpdo->Present) {
+		status = STATUS_INVALID_DEVICE_REQUEST;
+		goto END;
+	}
+	Irp->IoStatus.Information = 0;
+	status = process_write_irp(vpdo, Irp);
+END:
+	DBGI(DBG_WRITE, "vhci_write: Leave: %s\n", dbg_ntstatus(status));
+	Irp->IoStatus.Status = status;
+	IoCompleteRequest(Irp, IO_NO_INCREMENT);
+	dec_io_vhub(vhub);
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 
 	return status;
 }

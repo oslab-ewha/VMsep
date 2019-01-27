@@ -73,102 +73,92 @@ pnp_cancel_stop_device(pvdev_t vdev, PIRP irp)
         (_Data_)->common.PreviousPnPState = NotStarted;
 
 extern PAGEABLE NTSTATUS
-Bus_PDO_PnP(__in PDEVICE_OBJECT DeviceObject, __in PIRP Irp,
-	__in PIO_STACK_LOCATION IrpStack, __in PPDO_DEVICE_DATA DeviceData);
+vhci_pnp_vpdo(PDEVICE_OBJECT devobj, PIRP Irp, PIO_STACK_LOCATION IrpStack, pusbip_vpdo_dev_t vpdo);
 
 extern PAGEABLE NTSTATUS
-Bus_WmiRegistration(__in PFDO_DEVICE_DATA FdoData);
+reg_wmi(__in pusbip_vhub_dev_t vhub);
 
 extern PAGEABLE NTSTATUS
-Bus_WmiDeRegistration(__in PFDO_DEVICE_DATA FdoData);
+dereg_wmi(__in pusbip_vhub_dev_t vhub);
 
 PAGEABLE NTSTATUS
-Bus_AddDevice(__in PDRIVER_OBJECT DriverObject, __in PDEVICE_OBJECT PhysicalDeviceObject)
+vhci_add_device(__in PDRIVER_OBJECT drvobj, __in PDEVICE_OBJECT devobj_lower)
 {
-	PDEVICE_OBJECT      deviceObject = NULL;
-	PFDO_DEVICE_DATA    deviceData = NULL;
-	PWCHAR              deviceName = NULL;
+	PDEVICE_OBJECT		devobj;
+	pusbip_vhub_dev_t	vhub = NULL;
+	PWCHAR		deviceName = NULL;
 	ULONG		nameLength;
 	NTSTATUS	status;
 
-	PAGED_CODE ();
+	PAGED_CODE();
 
-	DBGI(DBG_GENERAL | DBG_PNP, "Add Device: 0x%p\n", PhysicalDeviceObject);
+	DBGI(DBG_GENERAL | DBG_PNP, "Add Device: 0x%p\n", devobj_lower);
 
-	status = IoCreateDevice (
-				DriverObject,               // our driver object
-				sizeof (FDO_DEVICE_DATA),   // device object extension size
-				NULL,                       // FDOs do not have names
-				FILE_DEVICE_BUS_EXTENDER,   // We are a bus
-				FILE_DEVICE_SECURE_OPEN,    //
-				TRUE,                       // our FDO is exclusive
-				&deviceObject);             // The device object created
+	status = IoCreateDevice(drvobj, sizeof(usbip_vhub_dev_t), NULL,
+		FILE_DEVICE_BUS_EXTENDER, FILE_DEVICE_SECURE_OPEN, TRUE, &devobj);
 
 	if (!NT_SUCCESS(status)) {
 		goto End;
 	}
 
-	deviceData = (PFDO_DEVICE_DATA)deviceObject->DeviceExtension;
-	RtlZeroMemory (deviceData, sizeof(FDO_DEVICE_DATA));
+	vhub = (pusbip_vhub_dev_t)devobj->DeviceExtension;
+	RtlZeroMemory(vhub, sizeof(usbip_vhub_dev_t));
 
-	// Set the initial state of the FDO
-	INITIALIZE_PNP_STATE(deviceData);
+	// Set the initial state of the vhub
+	INITIALIZE_PNP_STATE(vhub);
 
-	deviceData->common.IsFDO = TRUE;
-	deviceData->common.Self = deviceObject;
+	vhub->common.is_vhub = TRUE;
+	vhub->common.Self = devobj;
 
-	ExInitializeFastMutex (&deviceData->Mutex);
+	ExInitializeFastMutex(&vhub->Mutex);
 
-	InitializeListHead (&deviceData->ListOfPDOs);
+	InitializeListHead(&vhub->head_vpdo);
 
-	// Set the PDO for use with PlugPlay functions
-	deviceData->UnderlyingPDO = PhysicalDeviceObject;
+	// Set the vpdo for use with PlugPlay functions
+	vhub->UnderlyingPDO = devobj_lower;
 
-	// Set the initial powerstate of the FDO
-	deviceData->common.DevicePowerState = PowerDeviceUnspecified;
-	deviceData->common.SystemPowerState = PowerSystemWorking;
+	// Set the initial powerstate of the vhub
+	vhub->common.DevicePowerState = PowerDeviceUnspecified;
+	vhub->common.SystemPowerState = PowerSystemWorking;
 
 	// Biased to 1. Transition to zero during remove device
 	// means IO is finished. Transition to 1 means the device
 	// can be stopped.
-	deviceData->OutstandingIO = 1;
+	vhub->OutstandingIO = 1;
 
 	// Initialize the remove event to Not-Signaled.  This event
 	// will be set when the OutstandingIO will become 0.
-	KeInitializeEvent(&deviceData->RemoveEvent, SynchronizationEvent, FALSE);
+	KeInitializeEvent(&vhub->RemoveEvent, SynchronizationEvent, FALSE);
 
 	// Initialize the stop event to Signaled:
 	// there are no Irps that prevent the device from being
 	// stopped. This event will be set when the OutstandingIO
 	// will become 0.
-	//
-	KeInitializeEvent(&deviceData->StopEvent, SynchronizationEvent, TRUE);
+	KeInitializeEvent(&vhub->StopEvent, SynchronizationEvent, TRUE);
 
-	deviceObject->Flags |= DO_POWER_PAGABLE|DO_BUFFERED_IO;
+	devobj->Flags |= DO_POWER_PAGABLE|DO_BUFFERED_IO;
 
 	// Tell the Plug & Play system that this device will need a
 	// device interface.
-	status = IoRegisterDeviceInterface(PhysicalDeviceObject,
-		(LPGUID) &GUID_DEVINTERFACE_VHCI_USBIP, NULL, &deviceData->InterfaceName);
+	status = IoRegisterDeviceInterface(devobj_lower, (LPGUID) &GUID_DEVINTERFACE_VHCI_USBIP, NULL, &vhub->InterfaceName);
 
 	if (!NT_SUCCESS (status)) {
 		DBGE(DBG_PNP, "AddDevice: IoRegisterDeviceInterface failed (%x)", status);
 		goto End;
 	}
 
-	// Attach our FDO to the device stack.
+	// Attach our vhub to the device stack.
 	// The return value of IoAttachDeviceToDeviceStack is the top of the
 	// attachment chain.  This is where all the IRPs should be routed.
-	deviceData->NextLowerDriver = IoAttachDeviceToDeviceStack(deviceObject, PhysicalDeviceObject);
+	vhub->NextLowerDriver = IoAttachDeviceToDeviceStack(devobj, devobj_lower);
 
-	if (NULL == deviceData->NextLowerDriver) {
+	if (vhub->NextLowerDriver == NULL) {
 		status = STATUS_NO_SUCH_DEVICE;
 		goto End;
 	}
 #if DBG
-	// We will demonstrate here the step to retrieve the name of the PDO
-	status = IoGetDeviceProperty(PhysicalDeviceObject, DevicePropertyPhysicalDeviceObjectName,
-			0, NULL, &nameLength);
+	// We will demonstrate here the step to retrieve the name of the vpdo
+	status = IoGetDeviceProperty(devobj_lower, DevicePropertyPhysicalDeviceObjectName, 0, NULL, &nameLength);
 
 	if (status != STATUS_BUFFER_TOO_SMALL) {
 		DBGE(DBG_PNP, "AddDevice:IoGDP failed (0x%x)\n", status);
@@ -183,7 +173,7 @@ Bus_AddDevice(__in PDRIVER_OBJECT DriverObject, __in PDEVICE_OBJECT PhysicalDevi
 		goto End;
 	}
 
-	status = IoGetDeviceProperty(PhysicalDeviceObject, DevicePropertyPhysicalDeviceObjectName,
+	status = IoGetDeviceProperty(devobj_lower, DevicePropertyPhysicalDeviceObjectName,
 				nameLength, deviceName, &nameLength);
 
 	if (!NT_SUCCESS (status)) {
@@ -191,31 +181,30 @@ Bus_AddDevice(__in PDRIVER_OBJECT DriverObject, __in PDEVICE_OBJECT PhysicalDevi
 		goto End;
 	}
 
-	DBGI(DBG_PNP, "AddDevice: %p to %p->%p (%ws) \n", deviceObject, deviceData->NextLowerDriver, PhysicalDeviceObject, deviceName);
+	DBGI(DBG_PNP, "AddDevice: %p to %p->%p (%ws) \n", vhub, vhub->NextLowerDriver, devobj_lower, deviceName);
 #endif
 
 	// We are done with initializing, so let's indicate that and return.
 	// This should be the final step in the AddDevice process.
-	//
-	deviceObject->Flags &= ~DO_DEVICE_INITIALIZING;
+	devobj->Flags &= ~DO_DEVICE_INITIALIZING;
 
 End:
 	if (deviceName) {
 		ExFreePool(deviceName);
 	}
 
-	if (!NT_SUCCESS(status) && deviceObject) {
-		if (deviceData && deviceData->NextLowerDriver) {
-			IoDetachDevice(deviceData->NextLowerDriver);
+	if (!NT_SUCCESS(status) && devobj) {
+		if (vhub && vhub->NextLowerDriver) {
+			IoDetachDevice(vhub->NextLowerDriver);
 		}
-		IoDeleteDevice (deviceObject);
+		IoDeleteDevice (devobj);
 	}
 
 	return status;
 }
 
 static PAGEABLE void
-Bus_RemoveFdo(__in PFDO_DEVICE_DATA FdoData)
+invalidate_vhub(pusbip_vhub_dev_t vhub)
 {
 	PAGED_CODE();
 
@@ -223,28 +212,27 @@ Bus_RemoveFdo(__in PFDO_DEVICE_DATA FdoData)
 	// and free all the resources associated with the device.
 
 	// Disable the device interface and free the buffer
-	if (FdoData->InterfaceName.Buffer != NULL) {
-		IoSetDeviceInterfaceState(&FdoData->InterfaceName, FALSE);
+	if (vhub->InterfaceName.Buffer != NULL) {
+		IoSetDeviceInterfaceState(&vhub->InterfaceName, FALSE);
 
-		ExFreePool(FdoData->InterfaceName.Buffer);
-		RtlZeroMemory(&FdoData->InterfaceName, sizeof(UNICODE_STRING));
+		ExFreePool(vhub->InterfaceName.Buffer);
+		RtlZeroMemory(&vhub->InterfaceName, sizeof(UNICODE_STRING));
 	}
 
-	// Inform WMI to remove this DeviceObject from its
-	// list of providers.
-	Bus_WmiDeRegistration(FdoData);
+	// Inform WMI to remove this DeviceObject from its list of providers.
+	dereg_wmi(vhub);
 }
 
 PAGEABLE NTSTATUS
-Bus_DestroyPdo(PDEVICE_OBJECT Device, __in PPDO_DEVICE_DATA PdoData)
+destroy_vpdo(pusbip_vpdo_dev_t vpdo)
 {
 	PAGED_CODE();
 
 	// VHCI does not queue any irps at this time so we have nothing to do.
-	//
 	// Free any resources.
 
 	//FIXME
+<<<<<<< HEAD
 	if (PdoData->fo) {
 		PdoData->fo->FsContext = NULL;
 		PdoData->fo = NULL;
@@ -273,13 +261,24 @@ pnp_query_remove_device(pvdev_t vdev, PIRP irp)
 		break;
 =======
 Bus_StartFdo(__in PFDO_DEVICE_DATA FdoData, __in PIRP Irp)
+=======
+	if (vpdo->fo) {
+		vpdo->fo->FsContext = NULL;
+		vpdo->fo = NULL;
+	}
+	DBGI(DBG_PNP, "Deleting vpdo: 0x%p\n", vpdo);
+	IoDeleteDevice(vpdo->common.Self);
+	return STATUS_SUCCESS;
+}
+
+static PAGEABLE NTSTATUS
+start_vhub(pusbip_vhub_dev_t vhub)
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 {
 	POWER_STATE	powerState;
 	NTSTATUS	status;
 
 	PAGED_CODE();
-
-	UNREFERENCED_PARAMETER(Irp);
 
 	// Check the function driver source to learn
 	// about parsing resource list.
@@ -288,7 +287,7 @@ Bus_StartFdo(__in PFDO_DEVICE_DATA FdoData, __in PIRP Irp)
 	// STATUS_OBJECT_NAME_EXISTS means we are enabling the interface
 	// that was already enabled, which could happen if the device
 	// is stopped and restarted for resource rebalancing.
-	status = IoSetDeviceInterfaceState(&FdoData->InterfaceName, TRUE);
+	status = IoSetDeviceInterfaceState(&vhub->InterfaceName, TRUE);
 	if (!NT_SUCCESS(status)) {
 		DBGE(DBG_PNP, "IoSetDeviceInterfaceState failed: 0x%x\n", status);
 		return status;
@@ -299,25 +298,25 @@ Bus_StartFdo(__in PFDO_DEVICE_DATA FdoData, __in PIRP Irp)
 	// to the state it was before you stopped the device and relinquished
 	// resources.
 
-	FdoData->common.DevicePowerState = PowerDeviceD0;
+	vhub->common.DevicePowerState = PowerDeviceD0;
 	powerState.DeviceState = PowerDeviceD0;
-	PoSetPowerState(FdoData->common.Self, DevicePowerState, powerState);
+	PoSetPowerState(vhub->common.Self, DevicePowerState, powerState);
 
-	SET_NEW_PNP_STATE(FdoData, Started);
+	SET_NEW_PNP_STATE(vhub, Started);
 
 	// Register with WMI
-	status = Bus_WmiRegistration(FdoData);
+	status = reg_wmi(vhub);
 	if (!NT_SUCCESS(status)) {
-		DBGE(DBG_PNP, "StartFdo: Bus_WmiRegistration failed (%x)\n", status);
+		DBGE(DBG_PNP, "start_vhub: reg_wmi failed (%x)\n", status);
 	}
 
 	return status;
 }
 
 static NTSTATUS
-Bus_CompletionRoutine(__in PDEVICE_OBJECT DeviceObject, __in PIRP Irp, __in PVOID Context)
+vhci_completion_routine(__in PDEVICE_OBJECT devobj, __in PIRP Irp, __in PVOID Context)
 {
-	UNREFERENCED_PARAMETER(DeviceObject);
+	UNREFERENCED_PARAMETER(devobj);
 
 	// If the lower driver didn't return STATUS_PENDING, we don't need to
 	// set the event because we won't be waiting on it.
@@ -332,12 +331,16 @@ Bus_CompletionRoutine(__in PDEVICE_OBJECT DeviceObject, __in PIRP Irp, __in PVOI
 
 static PAGEABLE NTSTATUS
 <<<<<<< HEAD
+<<<<<<< HEAD
 pnp_cancel_remove_device(pvdev_t vdev, PIRP irp)
 {
 	if (vdev->DevicePnPState == RemovePending) {
 		RESTORE_PREVIOUS_PNP_STATE(vdev);
 =======
 Bus_SendIrpSynchronously(__in PDEVICE_OBJECT DeviceObject, __in PIRP Irp)
+=======
+vhci_send_irp_synchronously(__in PDEVICE_OBJECT devobj, __in PIRP Irp)
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 {
 	KEVENT		event;
 	NTSTATUS	status;
@@ -348,9 +351,9 @@ Bus_SendIrpSynchronously(__in PDEVICE_OBJECT DeviceObject, __in PIRP Irp)
 
 	IoCopyCurrentIrpStackLocationToNext(Irp);
 
-	IoSetCompletionRoutine(Irp, Bus_CompletionRoutine, &event, TRUE, TRUE, TRUE);
+	IoSetCompletionRoutine(Irp, vhci_completion_routine, &event, TRUE, TRUE, TRUE);
 
-	status = IoCallDriver(DeviceObject, Irp);
+	status = IoCallDriver(devobj, Irp);
 
 	// Wait for lower drivers to be done with the Irp.
 	// Important thing to note here is when you allocate
@@ -367,47 +370,50 @@ Bus_SendIrpSynchronously(__in PDEVICE_OBJECT DeviceObject, __in PIRP Irp)
 
 static PAGEABLE NTSTATUS
 <<<<<<< HEAD
+<<<<<<< HEAD
 pnp_surprise_removal(pvdev_t vdev, PIRP irp)
 {
 	SET_NEW_PNP_STATE(vdev, SurpriseRemovePending);
 	IRP_PASS_DOWN_OR_SUCCESS(vdev, irp);
 =======
 Bus_FDO_PnP(__in PDEVICE_OBJECT DeviceObject, __in PIRP Irp, __in PIO_STACK_LOCATION IrpStack, __in PFDO_DEVICE_DATA DeviceData)
+=======
+vhci_pnp_vhub(PDEVICE_OBJECT devobj, PIRP Irp, PIO_STACK_LOCATION IrpStack, pusbip_vhub_dev_t vhub)
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 {
-	PPDO_DEVICE_DATA	pdoData;
+	pusbip_vpdo_dev_t	vpdo;
 	PDEVICE_RELATIONS	relations, oldRelations;
-	ULONG			length, prevcount, numPdosPresent;
+	ULONG			length, prevcount, n_vpdos_cur;
 	PLIST_ENTRY		entry, listHead, nextEntry;
 	NTSTATUS		status;
 
 	PAGED_CODE ();
 
-	Bus_IncIoCount(DeviceData);
+	inc_io_vhub(vhub);
 
 	switch (IrpStack->MinorFunction) {
 	case IRP_MN_START_DEVICE:
 		// Send the Irp down and wait for it to come back.
 		// Do not touch the hardware until then.
-		//
-		status = Bus_SendIrpSynchronously (DeviceData->NextLowerDriver, Irp);
+		status = vhci_send_irp_synchronously(vhub->NextLowerDriver, Irp);
 		if (NT_SUCCESS(status)) {
 			// Initialize your device with the resources provided
 			// by the PnP manager to your device.
-			status = Bus_StartFdo (DeviceData, Irp);
+			status = start_vhub(vhub);
 		}
 
 		// We must now complete the IRP, since we stopped it in the
 		// completion routine with MORE_PROCESSING_REQUIRED.
 		Irp->IoStatus.Status = status;
-		IoCompleteRequest (Irp, IO_NO_INCREMENT);
-		Bus_DecIoCount (DeviceData);
+		IoCompleteRequest(Irp, IO_NO_INCREMENT);
+		dec_io_vhub(vhub);
 		return status;
 	case IRP_MN_QUERY_STOP_DEVICE:
 		// The PnP manager is trying to stop the device
 		// for resource rebalancing. Fail this now if you
 		// cannot stop the device in response to STOP_DEVICE.
 
-		SET_NEW_PNP_STATE(DeviceData, StopPending);
+		SET_NEW_PNP_STATE(vhub, StopPending);
 		Irp->IoStatus.Status = STATUS_SUCCESS; // You must not fail the IRP.
 		break;
 	case IRP_MN_CANCEL_STOP_DEVICE:
@@ -415,15 +421,15 @@ Bus_FDO_PnP(__in PDEVICE_OBJECT DeviceObject, __in PIRP Irp, __in PIO_STACK_LOCA
 		// IRP_MN_QUERY_STOP_DEVICE, to inform the drivers for a
 		// device that the device will not be stopped for
 		// resource reconfiguration.
-		//
+
 		// First check to see whether you have received cancel-stop
 		// without first receiving a query-stop. This could happen if
-		//  someone above us fails a query-stop and passes down the subsequent
+		// someone above us fails a query-stop and passes down the subsequent
 		// cancel-stop.
-		if (StopPending == DeviceData->common.DevicePnPState) {
+		if (StopPending == vhub->common.DevicePnPState) {
 			// We did receive a query-stop, so restore.
-			RESTORE_PREVIOUS_PNP_STATE(DeviceData);
-			ASSERT(DeviceData->common.DevicePnPState == Started);
+			RESTORE_PREVIOUS_PNP_STATE(vhub);
+			ASSERT(vhub->common.DevicePnPState == Started);
 		}
 		Irp->IoStatus.Status = STATUS_SUCCESS; // We must not fail the IRP.
 		break;
@@ -435,23 +441,18 @@ Bus_FDO_PnP(__in PDEVICE_OBJECT DeviceObject, __in PIRP Irp, __in PIO_STACK_LOCA
 		// To do that, first we will decrement this very operation.
 		// When the counter goes to 1, Stop event is set.
 		
-		Bus_DecIoCount(DeviceData);
+		dec_io_vhub(vhub);
 
-		KeWaitForSingleObject(&DeviceData->StopEvent,
-				Executive, // Waiting reason of a driver
-				KernelMode, // Waiting in kernel mode
-				FALSE, // No allert
-				NULL); // No timeout
+		KeWaitForSingleObject(&vhub->StopEvent, Executive, KernelMode, FALSE, NULL);
 
 		// Increment the counter back because this IRP has to
 		// be sent down to the lower stack.
-		Bus_IncIoCount (DeviceData);
+		inc_io_vhub(vhub);
 
 		// Free resources given by start device.
-		SET_NEW_PNP_STATE(DeviceData, Stopped);
+		SET_NEW_PNP_STATE(vhub, Stopped);
 
 		// We don't need a completion routine so fire and forget.
-		//
 		// Set the current stack location to the next stack location and
 		// call the next device object.
 
@@ -462,7 +463,7 @@ Bus_FDO_PnP(__in PDEVICE_OBJECT DeviceObject, __in PIRP Irp, __in PIO_STACK_LOCA
 		// IRP here.  Since we are not, set the status to SUCCESS and
 		// call the next driver.
 
-		SET_NEW_PNP_STATE(DeviceData, RemovePending);
+		SET_NEW_PNP_STATE(vhub, RemovePending);
 
 		Irp->IoStatus.Status = STATUS_SUCCESS;
 		break;
@@ -476,35 +477,35 @@ Bus_FDO_PnP(__in PDEVICE_OBJECT DeviceObject, __in PIRP Irp, __in PIO_STACK_LOCA
 		// someone above us fails a query-remove and passes down the
 		// subsequent cancel-remove.
 
-		if (RemovePending == DeviceData->common.DevicePnPState) {
+		if (RemovePending == vhub->common.DevicePnPState) {
 			// We did receive a query-remove, so restore.
-			RESTORE_PREVIOUS_PNP_STATE(DeviceData);
+			RESTORE_PREVIOUS_PNP_STATE(vhub);
 		}
 		Irp->IoStatus.Status = STATUS_SUCCESS;// You must not fail the IRP.
 		break;
 	case IRP_MN_SURPRISE_REMOVAL:
 		// The device has been unexpectedly removed from the machine
-		// and is no longer available for I/O. Bus_RemoveFdo clears
+		// and is no longer available for I/O. invalidate_vhub clears
 		// all the resources, frees the interface and de-registers
-		// with WMI, but it doesn't delete the FDO. That's done
+		// with WMI, but it doesn't delete the vhub. That's done
 		// later in Remove device query.
 
-		SET_NEW_PNP_STATE(DeviceData, SurpriseRemovePending);
-		Bus_RemoveFdo(DeviceData);
+		SET_NEW_PNP_STATE(vhub, SurpriseRemovePending);
+		invalidate_vhub(vhub);
 
-		ExAcquireFastMutex (&DeviceData->Mutex);
+		ExAcquireFastMutex(&vhub->Mutex);
 
-		listHead = &DeviceData->ListOfPDOs;
+		listHead = &vhub->head_vpdo;
 
 		for (entry = listHead->Flink,nextEntry = entry->Flink; entry != listHead; entry = nextEntry,nextEntry = entry->Flink) {
-			pdoData = CONTAINING_RECORD (entry, PDO_DEVICE_DATA, Link);
-			RemoveEntryList (&pdoData->Link);
-			InitializeListHead (&pdoData->Link);
-			pdoData->ParentFdo  = NULL;
-			pdoData->ReportedMissing = TRUE;
+			vpdo = CONTAINING_RECORD(entry, usbip_vpdo_dev_t, Link);
+			RemoveEntryList(&vpdo->Link);
+			InitializeListHead(&vpdo->Link);
+			vpdo->vhub = NULL;
+			vpdo->ReportedMissing = TRUE;
 		}
 
-		ExReleaseFastMutex (&DeviceData->Mutex);
+		ExReleaseFastMutex(&vhub->Mutex);
 
 		Irp->IoStatus.Status = STATUS_SUCCESS; // You must not fail the IRP.
 		break;
@@ -513,68 +514,68 @@ Bus_FDO_PnP(__in PDEVICE_OBJECT DeviceObject, __in PIRP Irp, __in PIO_STACK_LOCA
 		// We have no choice but to detach and delete the device object.
 
 		// Check the state flag to see whether you are surprise removed
-		if (DeviceData->common.DevicePnPState != SurpriseRemovePending) {
-			Bus_RemoveFdo(DeviceData);
+		if (vhub->common.DevicePnPState != SurpriseRemovePending) {
+			invalidate_vhub(vhub);
 		}
 
-		SET_NEW_PNP_STATE(DeviceData, Deleted);
+		SET_NEW_PNP_STATE(vhub, Deleted);
 
 		// Wait for all outstanding requests to complete.
 		// We need two decrements here, one for the increment in
 		// the beginning of this function, the other for the 1-biased value of
 		// OutstandingIO.
 
-		Bus_DecIoCount(DeviceData);
+		dec_io_vhub(vhub);
 
 		// The requestCount is at least one here (is 1-biased)
 
-		Bus_DecIoCount(DeviceData);
+		dec_io_vhub(vhub);
 
-		KeWaitForSingleObject(&DeviceData->RemoveEvent, Executive, KernelMode, FALSE, NULL);
+		KeWaitForSingleObject(&vhub->RemoveEvent, Executive, KernelMode, FALSE, NULL);
 
 		// Typically the system removes all the  children before
-		// removing the parent FDO. If for any reason child Pdos are
+		// removing the parent vhub. If for any reason child vpdo's are
 		// still present we will destroy them explicitly, with one exception -
-		// we will not delete the PDOs that are in SurpriseRemovePending state.
+		// we will not delete the vpdos that are in SurpriseRemovePending state.
 
-		ExAcquireFastMutex (&DeviceData->Mutex);
+		ExAcquireFastMutex(&vhub->Mutex);
 
-		listHead = &DeviceData->ListOfPDOs;
+		listHead = &vhub->head_vpdo;
 
 		for (entry = listHead->Flink,nextEntry = entry->Flink; entry != listHead; entry = nextEntry,nextEntry = entry->Flink) {
-			pdoData = CONTAINING_RECORD (entry, PDO_DEVICE_DATA, Link);
-			RemoveEntryList (&pdoData->Link);
-			if (SurpriseRemovePending == pdoData->common.DevicePnPState) {
+			vpdo = CONTAINING_RECORD(entry, usbip_vpdo_dev_t, Link);
+			RemoveEntryList (&vpdo->Link);
+			if (SurpriseRemovePending == vpdo->common.DevicePnPState) {
 				// We will reinitialize the list head so that we
-				// wouldn't barf when we try to delink this PDO from
-				// the parent's PDOs list, when the system finally
-				// removes the PDO. Let's also not forget to set the
-				// ReportedMissing flag to cause the deletion of the PDO.
-				DBGI(DBG_PNP, "\tFound a surprise removed device: 0x%p\n", pdoData->common.Self);
-				InitializeListHead (&pdoData->Link);
-				pdoData->ParentFdo  = NULL;
-				pdoData->ReportedMissing = TRUE;
+				// wouldn't barf when we try to delink this vpdo from
+				// the parent's vpdo list, when the system finally
+				// removes the vpdo. Let's also not forget to set the
+				// ReportedMissing flag to cause the deletion of the vpdo.
+				DBGI(DBG_PNP, "\tFound a surprise removed device: 0x%p\n", vpdo->common.Self);
+				InitializeListHead(&vpdo->Link);
+				vpdo->vhub = NULL;
+				vpdo->ReportedMissing = TRUE;
 				continue;
 			}
-			DeviceData->NumPDOs--;
-			Bus_DestroyPdo (pdoData->common.Self, pdoData);
+			vhub->n_vpdos--;
+			destroy_vpdo(vpdo);
 		}
 
-		ExReleaseFastMutex (&DeviceData->Mutex);
+		ExReleaseFastMutex(&vhub->Mutex);
 
 		// We need to send the remove down the stack before we detach,
 		// but we don't need to wait for the completion of this operation
 		// (and to register a completion routine).
 		Irp->IoStatus.Status = STATUS_SUCCESS;
-		IoSkipCurrentIrpStackLocation (Irp);
-		status = IoCallDriver (DeviceData->NextLowerDriver, Irp);
+		IoSkipCurrentIrpStackLocation(Irp);
+		status = IoCallDriver(vhub->NextLowerDriver, Irp);
 
 		// Detach from the underlying devices.
-		IoDetachDevice (DeviceData->NextLowerDriver);
+		IoDetachDevice(vhub->NextLowerDriver);
 
-		DBGI(DBG_PNP, "\tDeleting FDO: 0x%p\n", DeviceObject);
+		DBGI(DBG_PNP, "Deleting vhub device object: 0x%p\n", devobj);
 
-		IoDeleteDevice (DeviceObject);
+		IoDeleteDevice(devobj);
 
 		return status;
 	case IRP_MN_QUERY_DEVICE_RELATIONS:
@@ -585,24 +586,24 @@ Bus_FDO_PnP(__in PDEVICE_OBJECT DeviceObject, __in PIRP Irp, __in PIO_STACK_LOCA
 			break;
 		}
 
-		// Tell the plug and play system about all the PDOs.
-		//
-		// There might also be device relations below and above this FDO,
+		// Tell the plug and play system about all the vpdos.
+
+		// There might also be device relations below and above this vhub,
 		// so, be sure to propagate the relations from the upper drivers.
-		//
+
 		// No Completion routine is needed so long as the status is preset
-		// to success.  (PDOs complete plug and play irps with the current
+		// to success.  (vpdos complete plug and play irps with the current
 		// IoStatus.Status and IoStatus.Information as the default.)
 
-		ExAcquireFastMutex (&DeviceData->Mutex);
+		ExAcquireFastMutex(&vhub->Mutex);
 
-		oldRelations = (PDEVICE_RELATIONS) Irp->IoStatus.Information;
+		oldRelations = (PDEVICE_RELATIONS)Irp->IoStatus.Information;
 		if (oldRelations) {
 			prevcount = oldRelations->Count;
-			if (!DeviceData->NumPDOs) {
+			if (vhub->n_vpdos == 0) {
 				// There is a device relations struct already present and we have
 				// nothing to add to it, so just call IoSkip and IoCall
-				ExReleaseFastMutex (&DeviceData->Mutex);
+				ExReleaseFastMutex(&vhub->Mutex);
 				break;
 			}
 		}
@@ -610,52 +611,51 @@ Bus_FDO_PnP(__in PDEVICE_OBJECT DeviceObject, __in PIRP Irp, __in PIO_STACK_LOCA
 			prevcount = 0;
 		}
 
-		// Calculate the number of PDOs actually present on the bus
-		numPdosPresent = 0;
-		for (entry = DeviceData->ListOfPDOs.Flink; entry != &DeviceData->ListOfPDOs; entry = entry->Flink) {
-			pdoData = CONTAINING_RECORD (entry, PDO_DEVICE_DATA, Link);
-			if (pdoData->Present)
-				numPdosPresent++;
+		// Calculate the number of vpdos actually present on the bus
+		n_vpdos_cur = 0;
+		for (entry = vhub->head_vpdo.Flink; entry != &vhub->head_vpdo; entry = entry->Flink) {
+			vpdo = CONTAINING_RECORD(entry, usbip_vpdo_dev_t, Link);
+			if (vpdo->Present)
+				n_vpdos_cur++;
 		}
 
-		// Need to allocate a new relations structure and add our
-		// PDOs to it.
-		length = sizeof(DEVICE_RELATIONS) + ((numPdosPresent + prevcount) * sizeof (PDEVICE_OBJECT)) -1;
+		// Need to allocate a new relations structure and add our vpdos to it
+		length = sizeof(DEVICE_RELATIONS) + ((n_vpdos_cur + prevcount) * sizeof(PDEVICE_OBJECT)) - 1;
 
 		relations = (PDEVICE_RELATIONS)ExAllocatePoolWithTag(PagedPool, length, USBIP_VHCI_POOL_TAG);
 
 		if (relations == NULL) {
 			// Fail the IRP
-			ExReleaseFastMutex(&DeviceData->Mutex);
+			ExReleaseFastMutex(&vhub->Mutex);
 			Irp->IoStatus.Status = status = STATUS_INSUFFICIENT_RESOURCES;
 			IoCompleteRequest(Irp, IO_NO_INCREMENT);
-			Bus_DecIoCount(DeviceData);
+			dec_io_vhub(vhub);
 			return status;
 		}
 
 		// Copy in the device objects so far
 		if (prevcount) {
-			RtlCopyMemory(relations->Objects, oldRelations->Objects, prevcount * sizeof (PDEVICE_OBJECT));
+			RtlCopyMemory(relations->Objects, oldRelations->Objects, prevcount * sizeof(PDEVICE_OBJECT));
 		}
 
-		relations->Count = prevcount + numPdosPresent;
+		relations->Count = prevcount + n_vpdos_cur;
 
-		// For each PDO present on this bus add a pointer to the device relations
+		// For each vpdo present on this bus add a pointer to the device relations
 		// buffer, being sure to take out a reference to that object.
 		// The Plug & Play system will dereference the object when it is done
 		// with it and free the device relations buffer.
-		for (entry = DeviceData->ListOfPDOs.Flink; entry != &DeviceData->ListOfPDOs; entry = entry->Flink) {
-			pdoData = CONTAINING_RECORD (entry, PDO_DEVICE_DATA, Link);
-			if (pdoData->Present) {
-				relations->Objects[prevcount] = pdoData->common.Self;
-				ObReferenceObject(pdoData->common.Self);
+		for (entry = vhub->head_vpdo.Flink; entry != &vhub->head_vpdo; entry = entry->Flink) {
+			vpdo = CONTAINING_RECORD(entry, usbip_vpdo_dev_t, Link);
+			if (vpdo->Present) {
+				relations->Objects[prevcount] = vpdo->common.Self;
+				ObReferenceObject(vpdo->common.Self);
 				prevcount++;
 			} else {
-				pdoData->ReportedMissing = TRUE;
+				vpdo->ReportedMissing = TRUE;
 			}
 		}
 
-		DBGI(DBG_PNP, "# of PDOS: present: %d, reported: %d\n", DeviceData->NumPDOs, relations->Count);
+		DBGI(DBG_PNP, "# of vpdo's: present: %d, reported: %d\n", vhub->n_vpdos, relations->Count);
 
 		// Replace the relations structure in the IRP with the new
 		// one.
@@ -664,7 +664,7 @@ Bus_FDO_PnP(__in PDEVICE_OBJECT DeviceObject, __in PIRP Irp, __in PIO_STACK_LOCA
 		}
 		Irp->IoStatus.Information = (ULONG_PTR) relations;
 
-		ExReleaseFastMutex(&DeviceData->Mutex);
+		ExReleaseFastMutex(&vhub->Mutex);
 
 		// Set up and pass the IRP further down the stack
 		Irp->IoStatus.Status = STATUS_SUCCESS;
@@ -676,13 +676,14 @@ Bus_FDO_PnP(__in PDEVICE_OBJECT DeviceObject, __in PIRP Irp, __in PIO_STACK_LOCA
 	}
 
 	IoSkipCurrentIrpStackLocation(Irp);
-	status = IoCallDriver(DeviceData->NextLowerDriver, Irp);
-	Bus_DecIoCount(DeviceData);
+	status = IoCallDriver(vhub->NextLowerDriver, Irp);
+	dec_io_vhub(vhub);
 
 	return status;
 >>>>>>> 48e1018... Beautify VHCI driver code
 }
 
+<<<<<<< HEAD
 static PAGEABLE NTSTATUS
 pnp_query_bus_information(PIRP irp)
 {
@@ -694,53 +695,73 @@ pnp_query_bus_information(PIRP irp)
 	busInfo = ExAllocatePoolWithTag(PagedPool, sizeof(PNP_BUS_INFORMATION), USBIP_VHCI_POOL_TAG);
 =======
 	PCOMMON_DEVICE_DATA	commonData;
+=======
+PAGEABLE NTSTATUS
+vhci_pnp(__in PDEVICE_OBJECT devobj, __in PIRP Irp)
+{
+	pdev_common_t		devcom;
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 	PIO_STACK_LOCATION	irpStack;
 	NTSTATUS	status;
 
 	PAGED_CODE();
 
-	DBGI(DBG_GENERAL | DBG_PNP, "Bus_PnP: Enter\n");
+	DBGI(DBG_GENERAL | DBG_PNP, "vhci_pnp: Enter\n");
 
 	irpStack = IoGetCurrentIrpStackLocation(Irp);
 	ASSERT(IRP_MJ_PNP == irpStack->MajorFunction);
 
-	commonData = (PCOMMON_DEVICE_DATA)DeviceObject->DeviceExtension;
+	devcom = (pdev_common_t)devobj->DeviceExtension;
 
 	// If the device has been removed, the driver should
 	// not pass the IRP down to the next lower driver.
-	if (commonData->DevicePnPState == Deleted) {
+	if (devcom->DevicePnPState == Deleted) {
 		Irp->IoStatus.Status = status = STATUS_NO_SUCH_DEVICE;
 		IoCompleteRequest(Irp, IO_NO_INCREMENT);
 		return status;
 	}
 
-	if (commonData->IsFDO) {
-		DBGI(DBG_PNP, "FDO: minor: %s, IRP:0x%p\n", dbg_pnp_minor(irpStack->MinorFunction), Irp);
+	if (devcom->is_vhub) {
+		DBGI(DBG_PNP, "vhub: minor: %s, IRP:0x%p\n", dbg_pnp_minor(irpStack->MinorFunction), Irp);
 
-		// Request is for the bus FDO
-		status = Bus_FDO_PnP(DeviceObject, Irp, irpStack, (PFDO_DEVICE_DATA)commonData);
+		// Request is for the vhub
+		status = vhci_pnp_vhub(devobj, Irp, irpStack, (pusbip_vhub_dev_t)devcom);
 	}
 	else {
-		DBGI(DBG_PNP, "PDO: minor: %s, IRP: 0x%p\n", dbg_pnp_minor(irpStack->MinorFunction), Irp);
+		DBGI(DBG_PNP, "vpdo: minor: %s, IRP: 0x%p\n", dbg_pnp_minor(irpStack->MinorFunction), Irp);
 
-		// Request is for the child PDO.
-		status = Bus_PDO_PnP(DeviceObject, Irp, irpStack, (PPDO_DEVICE_DATA)commonData);
+		// Request is for the child vpdo.
+		status = vhci_pnp_vpdo(devobj, Irp, irpStack, (pusbip_vpdo_dev_t)devcom);
 	}
 
-	DBGI(DBG_GENERAL | DBG_PNP, "Bus_PnP: Leave: %s\n", dbg_ntstatus(status));
+	DBGI(DBG_GENERAL | DBG_PNP, "vhci_pnp: Leave: %s\n", dbg_ntstatus(status));
 
 	return status;
 }
 
 static void
-complete_pending_read_irp(PPDO_DEVICE_DATA pdodata)
+complete_pending_read_irp(pusbip_vpdo_dev_t vpdo)
 {
 	KIRQL	oldirql;
 	PIRP	irp;
 >>>>>>> 48e1018... Beautify VHCI driver code
 
+<<<<<<< HEAD
 	if (busInfo == NULL) {
 		return STATUS_INSUFFICIENT_RESOURCES;
+=======
+	KeAcquireSpinLock(&vpdo->lock_urbr, &oldirql);
+	irp = vpdo->pending_read_irp;
+	vpdo->pending_read_irp = NULL;
+	KeReleaseSpinLock(&vpdo->lock_urbr, oldirql);
+
+	if (irp != NULL) {
+		irp->IoStatus.Status = STATUS_DEVICE_NOT_CONNECTED;
+		IoSetCancelRoutine(irp, NULL);
+		KeRaiseIrql(DISPATCH_LEVEL, &oldirql);
+		IoCompleteRequest(irp, IO_NO_INCREMENT);
+		KeLowerIrql(oldirql);
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 	}
 <<<<<<< HEAD
 
@@ -761,9 +782,9 @@ complete_pending_read_irp(PPDO_DEVICE_DATA pdodata)
 }
 
 static void
-complete_pending_irp(PPDO_DEVICE_DATA pdodata)
+complete_pending_irp(pusbip_vpdo_dev_t vpdo)
 {
-	int	count=0;
+	int	count = 0;
 	KIRQL oldirql;
 
 	//FIXME
@@ -775,18 +796,18 @@ complete_pending_irp(PPDO_DEVICE_DATA pdodata)
 		PLIST_ENTRY	le;
 		KIRQL	oldirql2;
 
-		KeAcquireSpinLockAtDpcLevel(&pdodata->lock_urbr);
-		if (IsListEmpty(&pdodata->head_urbr)) {
-			pdodata->urbr_sent_partial = NULL;
-			pdodata->len_sent_partial = 0;
-			InitializeListHead(&pdodata->head_urbr_sent);
-			InitializeListHead(&pdodata->head_urbr_pending);
+		KeAcquireSpinLockAtDpcLevel(&vpdo->lock_urbr);
+		if (IsListEmpty(&vpdo->head_urbr)) {
+			vpdo->urbr_sent_partial = NULL;
+			vpdo->len_sent_partial = 0;
+			InitializeListHead(&vpdo->head_urbr_sent);
+			InitializeListHead(&vpdo->head_urbr_pending);
 
-			KeReleaseSpinLock(&pdodata->lock_urbr, oldirql);
+			KeReleaseSpinLock(&vpdo->lock_urbr, oldirql);
 			break;
 		}
 
-		le = RemoveHeadList(&pdodata->head_urbr);
+		le = RemoveHeadList(&vpdo->head_urbr);
 		urbr = CONTAINING_RECORD(le, struct urb_req, list_all);
 		/* FIMXE event */
 		irp = urbr->irp;
@@ -794,13 +815,13 @@ complete_pending_irp(PPDO_DEVICE_DATA pdodata)
 		if (count > 2) {
 			LARGE_INTEGER	interval;
 
-			KeReleaseSpinLock(&pdodata->lock_urbr, oldirql);
+			KeReleaseSpinLock(&vpdo->lock_urbr, oldirql);
 			DBGI(DBG_PNP, "sleep 50ms, let pnp manager send irp");
 			interval.QuadPart = -500000;
 			KeDelayExecutionThread(KernelMode, FALSE, &interval);
 			KeRaiseIrql(DISPATCH_LEVEL, &oldirql);
 		} else {
-			KeReleaseSpinLock(&pdodata->lock_urbr, DISPATCH_LEVEL);
+			KeReleaseSpinLock(&vpdo->lock_urbr, DISPATCH_LEVEL);
 		}
 
 		ExFreeToNPagedLookasideList(&g_lookaside, urbr);
@@ -814,50 +835,43 @@ complete_pending_irp(PPDO_DEVICE_DATA pdodata)
 }
 
 PAGEABLE void
-bus_init_pdo(__out PDEVICE_OBJECT pdo, PFDO_DEVICE_DATA fdodata)
+vhci_init_vpdo(pusbip_vpdo_dev_t vpdo)
 {
-	PPDO_DEVICE_DATA	pdodata;
+	pusbip_vhub_dev_t	vhub;
 
-	PAGED_CODE ();
+	PAGED_CODE();
 
-	pdodata = (PPDO_DEVICE_DATA)  pdo->DeviceExtension;
+	DBGI(DBG_PNP, "vhci_init_vpdo: 0x%p\n", vpdo);
 
-	DBGI(DBG_PNP, "pdo 0x%p, extension 0x%p\n", pdo, pdodata);
+	vpdo->Present = TRUE; // attached to the bus
+	vpdo->ReportedMissing = FALSE; // not yet reported missing
 
-	// Initialize the rest
-	pdodata->common.IsFDO = FALSE;
-	pdodata->common.Self = pdo;
- 
-	pdodata->ParentFdo = fdodata->common.Self;
+	INITIALIZE_PNP_STATE(vpdo);
 
-	pdodata->Present = TRUE; // attached to the bus
-	pdodata->ReportedMissing = FALSE; // not yet reported missing
+	// vpdo usually starts its life at D3
+	vpdo->common.DevicePowerState = PowerDeviceD3;
+	vpdo->common.SystemPowerState = PowerSystemWorking;
 
-	INITIALIZE_PNP_STATE(pdodata);
+	InitializeListHead(&vpdo->head_urbr);
+	InitializeListHead(&vpdo->head_urbr_pending);
+	InitializeListHead(&vpdo->head_urbr_sent);
+	KeInitializeSpinLock(&vpdo->lock_urbr);
 
-	// PDO's usually start their life at D3
-	pdodata->common.DevicePowerState = PowerDeviceD3;
-	pdodata->common.SystemPowerState = PowerSystemWorking;
+	DEVOBJ_FROM_VPDO(vpdo)->Flags |= DO_POWER_PAGABLE|DO_DIRECT_IO;
 
-	InitializeListHead(&pdodata->head_urbr);
-	InitializeListHead(&pdodata->head_urbr_pending);
-	InitializeListHead(&pdodata->head_urbr_sent);
-	KeInitializeSpinLock(&pdodata->lock_urbr);
-
-	pdo->Flags |= DO_POWER_PAGABLE|DO_DIRECT_IO;
-
-	ExAcquireFastMutex (&fdodata->Mutex);
-	InsertTailList(&fdodata->ListOfPDOs, &pdodata->Link);
-	fdodata->NumPDOs++;
-	ExReleaseFastMutex (&fdodata->Mutex);
+	vhub = vpdo->vhub;
+	ExAcquireFastMutex(&vhub->Mutex);
+	InsertTailList(&vhub->head_vpdo, &vpdo->Link);
+	vhub->n_vpdos++;
+	ExReleaseFastMutex(&vhub->Mutex);
 	// This should be the last step in initialization.
-	pdo->Flags &= ~DO_DEVICE_INITIALIZING;
+	DEVOBJ_FROM_VPDO(vpdo)->Flags &= ~DO_DEVICE_INITIALIZING;
 }
 
 PAGEABLE NTSTATUS
-bus_get_ports_status(ioctl_usbip_vhci_get_ports_status *st, PFDO_DEVICE_DATA  fdodata, ULONG *info)
+vhci_get_ports_status(ioctl_usbip_vhci_get_ports_status *st, pusbip_vhub_dev_t vhub, ULONG *info)
 {
-	PPDO_DEVICE_DATA	pdodata;
+	pusbip_vpdo_dev_t	vpdo;
 	PLIST_ENTRY		entry;
 
 	PAGED_CODE();
@@ -865,34 +879,43 @@ bus_get_ports_status(ioctl_usbip_vhci_get_ports_status *st, PFDO_DEVICE_DATA  fd
 	DBGI(DBG_PNP, "get ports status\n");
 
 	RtlZeroMemory(st, sizeof(*st));
-	ExAcquireFastMutex (&fdodata->Mutex);
+	ExAcquireFastMutex(&vhub->Mutex);
 
-	for (entry = fdodata->ListOfPDOs.Flink; entry != &fdodata->ListOfPDOs; entry = entry->Flink) {
-		pdodata = CONTAINING_RECORD (entry, PDO_DEVICE_DATA, Link);
-		if (pdodata->SerialNo > 127 || pdodata->SerialNo == 0){
+	for (entry = vhub->head_vpdo.Flink; entry != &vhub->head_vpdo; entry = entry->Flink) {
+		vpdo = CONTAINING_RECORD (entry, usbip_vpdo_dev_t, Link);
+		if (vpdo->SerialNo > 127 || vpdo->SerialNo == 0) {
 			DBGE(DBG_PNP, "strange error");
 		}
-		if (st->u.max_used_port < (char)pdodata->SerialNo)
-			st->u.max_used_port = (char)pdodata->SerialNo;
-		st->u.port_status[pdodata->SerialNo] = 1;
+		if (st->u.max_used_port < (char)vpdo->SerialNo)
+			st->u.max_used_port = (char)vpdo->SerialNo;
+		st->u.port_status[vpdo->SerialNo] = 1;
 	}
-	ExReleaseFastMutex(&fdodata->Mutex);
+	ExReleaseFastMutex(&vhub->Mutex);
 	*info = sizeof(*st);
 	return STATUS_SUCCESS;
 >>>>>>> 48e1018... Beautify VHCI driver code
 }
 
 PAGEABLE NTSTATUS
+<<<<<<< HEAD
 vhci_pnp(__in PDEVICE_OBJECT devobj, __in PIRP irp)
 {
 	pvdev_t		vdev = DEVOBJ_TO_VDEV(devobj);
 	PIO_STACK_LOCATION	irpstack;
 	NTSTATUS	status;
+=======
+vhci_unplug_dev(int addr, pusbip_vhub_dev_t vhub)
+{
+	pusbip_vpdo_dev_t	vpdo;
+	PLIST_ENTRY		entry;
+	int	found = 0, all;
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 
 	PAGED_CODE();
 
 	irpstack = IoGetCurrentIrpStackLocation(irp);
 
+<<<<<<< HEAD
 	DBGI(DBG_GENERAL | DBG_PNP, "vhci_pnp(%s): Enter: minor:%s, irp: %p\n", dbg_vdev_type(DEVOBJ_VDEV_TYPE(devobj)), dbg_pnp_minor(irpstack->MinorFunction), irp);
 
 	// If the device has been removed, the driver should
@@ -966,6 +989,62 @@ vhci_pnp(__in PDEVICE_OBJECT devobj, __in PIRP irp)
 <<<<<<< HEAD
 END:
 	DBGI(DBG_GENERAL | DBG_PNP, "vhci_pnp(%s): Leave: irp:%p, status:%s\n", dbg_vdev_type(DEVOBJ_VDEV_TYPE(devobj)), irp, dbg_ntstatus(status));
+=======
+	ExAcquireFastMutex(&vhub->Mutex);
+
+	if (all) {
+		DBGI(DBG_PNP, "Plugging out all the devices!\n");
+	} else {
+		DBGI(DBG_PNP, "Plugging out single device: %d\n", addr);
+	}
+
+	if (vhub->n_vpdos == 0) {
+		//
+		// We got a 2nd plugout...somebody in user space isn't playing nice!!!
+		//
+		DBGW(DBG_PNP, "BAD BAD BAD...2 removes!!! Send only one!\n");
+		ExReleaseFastMutex(&vhub->Mutex);
+		return STATUS_NO_SUCH_DEVICE;
+	}
+
+	for (entry = vhub->head_vpdo.Flink; entry != &vhub->head_vpdo; entry = entry->Flink) {
+		vpdo = CONTAINING_RECORD(entry, usbip_vpdo_dev_t, Link);
+
+		DBGI(DBG_PNP, "found device %d\n", vpdo->SerialNo);
+
+		if (all || addr == (int)vpdo->SerialNo) {
+			DBGI(DBG_PNP, "Plugging out %d\n", vpdo->SerialNo);
+			vpdo->Present = FALSE;
+			complete_pending_read_irp(vpdo);
+			found = 1;
+			if (!all) {
+				break;
+			}
+		}
+	}
+
+	ExReleaseFastMutex(&vhub->Mutex);
+
+	if (found) {
+		IoInvalidateDeviceRelations(vhub->UnderlyingPDO, BusRelations);
+
+		ExAcquireFastMutex(&vhub->Mutex);
+
+		for (entry = vhub->head_vpdo.Flink; entry != &vhub->head_vpdo; entry = entry->Flink) {
+			vpdo = CONTAINING_RECORD(entry, usbip_vpdo_dev_t, Link);
+
+			if (!vpdo->Present) {
+				complete_pending_irp(vpdo);
+				SET_NEW_PNP_STATE(vpdo, PNP_DEVICE_REMOVED);
+				IoInvalidateDeviceState(vpdo->common.Self);
+			}
+		}
+		ExReleaseFastMutex(&vhub->Mutex);
+
+		DBGI(DBG_PNP, "Device %d plug out finished\n", addr);
+		return  STATUS_SUCCESS;
+	}
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 
 	return status;
 =======
@@ -973,9 +1052,9 @@ END:
 }
 
 PAGEABLE NTSTATUS
-Bus_EjectDevice(PUSBIP_VHCI_EJECT_HARDWARE Eject, PFDO_DEVICE_DATA FdoData)
+vhci_eject_device(PUSBIP_VHCI_EJECT_HARDWARE Eject, pusbip_vhub_dev_t vhub)
 {
-	PPDO_DEVICE_DATA	pdoData;
+	pusbip_vpdo_dev_t	vpdo;
 	PLIST_ENTRY		entry;
 	BOOLEAN			found = FALSE, ejectAll;
 
@@ -983,37 +1062,37 @@ Bus_EjectDevice(PUSBIP_VHCI_EJECT_HARDWARE Eject, PFDO_DEVICE_DATA FdoData)
 
 	ejectAll = (0 == Eject->SerialNo);
 
-	ExAcquireFastMutex (&FdoData->Mutex);
+	ExAcquireFastMutex(&vhub->Mutex);
 
 	if (ejectAll) {
-		DBGI(DBG_PNP, "Ejecting all the pdos!\n");
+		DBGI(DBG_PNP, "Ejecting all the vpdo's!\n");
 	} else {
 		DBGI(DBG_PNP, "Ejecting %d\n", Eject->SerialNo);
 	}
 
-	if (FdoData->NumPDOs == 0) {
+	if (vhub->n_vpdos == 0) {
 		// Somebody in user space isn't playing nice!!!
 		DBGW(DBG_PNP, "No devices to eject!\n");
-		ExReleaseFastMutex (&FdoData->Mutex);
+		ExReleaseFastMutex(&vhub->Mutex);
 		return STATUS_NO_SUCH_DEVICE;
 	}
 
-	// Scan the list to find matching PDOs
-	for (entry = FdoData->ListOfPDOs.Flink; entry != &FdoData->ListOfPDOs; entry = entry->Flink) {
-		pdoData = CONTAINING_RECORD (entry, PDO_DEVICE_DATA, Link);
+	// Scan the list to find matching vpdo's
+	for (entry = vhub->head_vpdo.Flink; entry != &vhub->head_vpdo; entry = entry->Flink) {
+		vpdo = CONTAINING_RECORD(entry, usbip_vpdo_dev_t, Link);
 
-		DBGI(DBG_PNP, "found device %d\n", pdoData->SerialNo);
+		DBGI(DBG_PNP, "found device %d\n", vpdo->SerialNo);
 
-		if (ejectAll || Eject->SerialNo == pdoData->SerialNo) {
-			DBGI(DBG_PNP, "Ejected %d\n", pdoData->SerialNo);
+		if (ejectAll || Eject->SerialNo == vpdo->SerialNo) {
+			DBGI(DBG_PNP, "Ejected %d\n", vpdo->SerialNo);
 			found = TRUE;
-			IoRequestDeviceEject(pdoData->common.Self);
+			IoRequestDeviceEject(vpdo->common.Self);
 			if (!ejectAll) {
 				break;
 			}
 		}
 	}
-	ExReleaseFastMutex (&FdoData->Mutex);
+	ExReleaseFastMutex(&vhub->Mutex);
 
 	if (found) {
 		return STATUS_SUCCESS;

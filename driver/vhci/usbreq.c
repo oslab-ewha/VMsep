@@ -33,7 +33,11 @@ build_setup_packet(usb_cspkt_t *csp, unsigned char direct_in, unsigned char type
 }
 
 struct urb_req *
+<<<<<<< HEAD
 find_sent_urbr(pvpdo_dev_t vpdo, struct usbip_header *hdr)
+=======
+find_sent_urbr(pusbip_vpdo_dev_t vpdo, struct usbip_header *hdr)
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 {
 	KIRQL		oldirql;
 	PLIST_ENTRY	le;
@@ -43,8 +47,13 @@ find_sent_urbr(pvpdo_dev_t vpdo, struct usbip_header *hdr)
 		struct urb_req	*urbr;
 		urbr = CONTAINING_RECORD(le, struct urb_req, list_state);
 		if (urbr->seq_num == hdr->base.seqnum) {
+<<<<<<< HEAD
 			RemoveEntryListInit(&urbr->list_all);
 			RemoveEntryListInit(&urbr->list_state);
+=======
+			RemoveEntryList(le);
+			RemoveEntryList(&urbr->list_all);
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 			KeReleaseSpinLock(&vpdo->lock_urbr, oldirql);
 			return urbr;
 		}
@@ -55,7 +64,11 @@ find_sent_urbr(pvpdo_dev_t vpdo, struct usbip_header *hdr)
 }
 
 struct urb_req *
+<<<<<<< HEAD
 find_pending_urbr(pvpdo_dev_t vpdo)
+=======
+find_pending_urbr(pusbip_vpdo_dev_t vpdo)
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 {
 	struct urb_req	*urbr;
 
@@ -64,12 +77,21 @@ find_pending_urbr(pvpdo_dev_t vpdo)
 
 	urbr = CONTAINING_RECORD(vpdo->head_urbr_pending.Flink, struct urb_req, list_state);
 	urbr->seq_num = ++(vpdo->seq_num);
+<<<<<<< HEAD
 	RemoveEntryListInit(&urbr->list_state);
+=======
+	RemoveEntryList(&urbr->list_state);
+	InitializeListHead(&urbr->list_state);
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 	return urbr;
 }
 
 static void
+<<<<<<< HEAD
 submit_urbr_unlink(pvpdo_dev_t vpdo, unsigned long seq_num_unlink)
+=======
+remove_cancelled_urbr(pusbip_vpdo_dev_t vpdo, PIRP irp)
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 {
 	struct urb_req	*urbr_unlink;
 
@@ -83,6 +105,7 @@ submit_urbr_unlink(pvpdo_dev_t vpdo, unsigned long seq_num_unlink)
 	}
 }
 
+<<<<<<< HEAD
 static void
 remove_cancelled_urbr(pvpdo_dev_t vpdo, struct urb_req *urbr)
 {
@@ -100,6 +123,30 @@ remove_cancelled_urbr(pvpdo_dev_t vpdo, struct urb_req *urbr)
 	KeReleaseSpinLock(&vpdo->lock_urbr, oldirql);
 
 	submit_urbr_unlink(vpdo, urbr->seq_num);
+=======
+	KeAcquireSpinLockAtDpcLevel(&vpdo->lock_urbr);
+
+	for (le = vpdo->head_urbr.Flink; le != &vpdo->head_urbr; le = le->Flink) {
+		struct urb_req	*urbr;
+
+		urbr = CONTAINING_RECORD(le, struct urb_req, list_all);
+		if (urbr->irp == irp) {
+			RemoveEntryList(le);
+			RemoveEntryList(&urbr->list_state);
+			if (vpdo->urbr_sent_partial == urbr) {
+				vpdo->urbr_sent_partial = NULL;
+				vpdo->len_sent_partial = 0;
+			}
+			KeReleaseSpinLock(&vpdo->lock_urbr, oldirql);
+
+			DBGI(DBG_GENERAL, "urb cancelled: %s\n", dbg_urbr(urbr));
+			ExFreeToNPagedLookasideList(&g_lookaside, urbr);
+			return;
+		}
+	}
+
+	KeReleaseSpinLock(&vpdo->lock_urbr, oldirql);
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 
 	DBGI(DBG_GENERAL, "cancelled urb destroyed: %s\n", dbg_urbr(urbr));
 	free_urbr(urbr);
@@ -108,6 +155,7 @@ remove_cancelled_urbr(pvpdo_dev_t vpdo, struct urb_req *urbr)
 static void
 cancel_urbr(PDEVICE_OBJECT devobj, PIRP irp)
 {
+<<<<<<< HEAD
 	UNREFERENCED_PARAMETER(devobj);
 
 	pvpdo_dev_t	vpdo;
@@ -121,14 +169,27 @@ cancel_urbr(PDEVICE_OBJECT devobj, PIRP irp)
 	IoReleaseCancelSpinLock(irp->CancelIrql);
 
 	remove_cancelled_urbr(vpdo, urbr);
+=======
+	pusbip_vpdo_dev_t	vpdo;
+
+	vpdo = (pusbip_vpdo_dev_t)devobj->DeviceExtension;
+	DBGI(DBG_GENERAL, "irp will be cancelled: %p\n", irp);
+
+	remove_cancelled_urbr(vpdo, irp);
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 
 	irp->IoStatus.Status = STATUS_CANCELLED;
 	irp->IoStatus.Information = 0;
 	IoCompleteRequest(irp, IO_NO_INCREMENT);
 }
 
+<<<<<<< HEAD
 struct urb_req *
 create_urbr(pvpdo_dev_t vpdo, PIRP irp, unsigned long seq_num_unlink)
+=======
+static struct urb_req *
+create_urbr(pusbip_vpdo_dev_t vpdo, PIRP irp)
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 {
 	struct urb_req	*urbr;
 
@@ -151,6 +212,7 @@ create_urbr(pvpdo_dev_t vpdo, PIRP irp, unsigned long seq_num_unlink)
 	return urbr;
 }
 
+<<<<<<< HEAD
 void
 free_urbr(struct urb_req *urbr)
 {
@@ -161,6 +223,10 @@ free_urbr(struct urb_req *urbr)
 
 BOOLEAN
 is_port_urbr(struct urb_req *urbr, unsigned char epaddr)
+=======
+static BOOLEAN
+insert_pending_or_sent_urbr(pusbip_vpdo_dev_t vpdo, struct urb_req *urbr, BOOLEAN is_pending)
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 {
 	PIRP	irp = urbr->irp;
 	PURB	urb;
@@ -185,6 +251,7 @@ is_port_urbr(struct urb_req *urbr, unsigned char epaddr)
 	default:
 		return FALSE;
 	}
+<<<<<<< HEAD
 
 	if (PIPE2ADDR(hPipe) == epaddr)
 		return TRUE;
@@ -193,12 +260,27 @@ is_port_urbr(struct urb_req *urbr, unsigned char epaddr)
 
 NTSTATUS
 submit_urbr(pvpdo_dev_t vpdo, struct urb_req *urbr)
+=======
+	else {
+		IoMarkIrpPending(irp);
+		if (is_pending)
+			InsertTailList(&vpdo->head_urbr_pending, &urbr->list_state);
+		else
+			InsertTailList(&vpdo->head_urbr_sent, &urbr->list_state);
+	}
+	return TRUE;
+}
+
+NTSTATUS
+submit_urbr(pusbip_vpdo_dev_t vpdo, PIRP irp)
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 {
 	KIRQL	oldirql;
 	KIRQL	oldirql_cancel;
 	PIRP	read_irp;
 	NTSTATUS	status = STATUS_PENDING;
 
+<<<<<<< HEAD
 	KeAcquireSpinLock(&vpdo->lock_urbr, &oldirql);
 
 	if (vpdo->urbr_sent_partial || vpdo->pending_read_irp == NULL) {
@@ -212,10 +294,27 @@ submit_urbr(pvpdo_dev_t vpdo, struct urb_req *urbr)
 		InsertTailList(&vpdo->head_urbr, &urbr->list_all);
 		KeReleaseSpinLock(&vpdo->lock_urbr, oldirql);
 
+=======
+	if ((urbr = create_urbr(vpdo, irp)) == NULL)
+		return STATUS_INSUFFICIENT_RESOURCES;
+
+	KeAcquireSpinLock(&vpdo->lock_urbr, &oldirql);
+
+	if (vpdo->urbr_sent_partial || vpdo->pending_read_irp == NULL) {
+		if (!insert_pending_or_sent_urbr(vpdo, urbr, TRUE)) {
+			KeReleaseSpinLock(&vpdo->lock_urbr, oldirql);
+			ExFreeToNPagedLookasideList(&g_lookaside, urbr);
+			DBGI(DBG_URB, "submit_urbr: urb cancelled\n");
+			return STATUS_CANCELLED;
+		}
+		InsertTailList(&vpdo->head_urbr, &urbr->list_all);
+		KeReleaseSpinLock(&vpdo->lock_urbr, oldirql);
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 		DBGI(DBG_URB, "submit_urbr: urb pending\n");
 		return STATUS_PENDING;
 	}
 
+<<<<<<< HEAD
 	BOOLEAN valid_irp;
 	IoAcquireCancelSpinLock(&oldirql_cancel);
 	valid_irp = IoSetCancelRoutine(vpdo->pending_read_irp, NULL) != NULL;
@@ -228,6 +327,8 @@ submit_urbr(pvpdo_dev_t vpdo, struct urb_req *urbr)
 		return status;
 	}
 
+=======
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 	read_irp = vpdo->pending_read_irp;
 	vpdo->urbr_sent_partial = urbr;
 
@@ -240,6 +341,7 @@ submit_urbr(pvpdo_dev_t vpdo, struct urb_req *urbr)
 	KeAcquireSpinLock(&vpdo->lock_urbr, &oldirql);
 
 	if (status == STATUS_SUCCESS) {
+<<<<<<< HEAD
 		if (urbr->irp != NULL) {
 			IoAcquireCancelSpinLock(&oldirql_cancel);
 			IoSetCancelRoutine(urbr->irp, cancel_urbr);
@@ -259,6 +361,27 @@ submit_urbr(pvpdo_dev_t vpdo, struct urb_req *urbr)
 		read_irp->IoStatus.Status = STATUS_SUCCESS;
 		IoCompleteRequest(read_irp, IO_NO_INCREMENT);
 		status = STATUS_PENDING;
+=======
+		if (vpdo->len_sent_partial == 0) {
+			vpdo->urbr_sent_partial = NULL;
+			if (!insert_pending_or_sent_urbr(vpdo, urbr, FALSE))
+				status = STATUS_CANCELLED;
+		}
+
+		if (status == STATUS_SUCCESS) {
+			InsertTailList(&vpdo->head_urbr, &urbr->list_all);
+			vpdo->pending_read_irp = NULL;
+			KeReleaseSpinLock(&vpdo->lock_urbr, oldirql);
+
+			read_irp->IoStatus.Status = STATUS_SUCCESS;
+			IoCompleteRequest(read_irp, IO_NO_INCREMENT);
+			status = STATUS_PENDING;
+		}
+		else {
+			KeReleaseSpinLock(&vpdo->lock_urbr, oldirql);
+			ExFreeToNPagedLookasideList(&g_lookaside, urbr);
+		}
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 	}
 	else {
 		vpdo->urbr_sent_partial = NULL;

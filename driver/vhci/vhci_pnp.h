@@ -11,7 +11,12 @@
         do { (vdev)->PreviousPnPState = (vdev)->DevicePnPState;\
         (vdev)->DevicePnPState = (_state_); } while (0)
 
+<<<<<<< HEAD
 #define RESTORE_PREVIOUS_PNP_STATE(vdev)   \
         do { (vdev)->DevicePnPState = (vdev)->PreviousPnPState; } while (0)
 
 extern PAGEABLE NTSTATUS vhci_unplug_port(pvhci_dev_t vhci, ULONG port);
+=======
+PAGEABLE NTSTATUS
+vhci_unplug_dev(int addr, pusbip_vhub_dev_t vhub);
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo

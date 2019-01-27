@@ -13,7 +13,11 @@
 #define PIPE2INTERVAL(handle)	((unsigned char)(((INT_PTR)(handle) & 0xff00) >> 8))
 
 struct urb_req {
+<<<<<<< HEAD
 	pvpdo_dev_t	vpdo;
+=======
+	pusbip_vpdo_dev_t	vpdo;
+>>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 	PIRP	irp;
 	KEVENT	*event;
 	unsigned long	seq_num, seq_num_unlink;
