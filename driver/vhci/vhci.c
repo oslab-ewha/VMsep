@@ -192,8 +192,12 @@ vhci_cleanup(__in PDEVICE_OBJECT devobj, __in PIRP irp)
 		vpdo->fo = NULL;
 		irpstack->FileObject->FsContext = NULL;
 		if (vpdo->Present)
+<<<<<<< HEAD
 			vhci_unplug_dev(vpdo->SerialNo, vhub);
 >>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
+=======
+			vhci_unplug_dev(vpdo->port, vhub);
+>>>>>>> 393ac6a... vhci, let a webcam with IAD be detected as COMPOSITE
 	}
 
 	irp->IoStatus.Information = 0;

@@ -26,12 +26,20 @@
 #include "usbip_network.h"
 #include "usbip_vhci.h"
 #include "usbip_forward.h"
+<<<<<<< HEAD:userspace/src/usbip/usbip_attach_ude.c
 #include "usbip_dscr.h"
+=======
+#include "usbip_wudev.h"
+>>>>>>> 393ac6a... vhci, let a webcam with IAD be detected as COMPOSITE:userspace/src/usbip/usbip_attach.c
 
 extern void usbip_attach_usage(void);
 
 static int
+<<<<<<< HEAD:userspace/src/usbip/usbip_attach_ude.c
 import_device(SOCKET sockfd, pvhci_pluginfo_t pluginfo, HANDLE *phdev)
+=======
+import_device(SOCKET sockfd, usbip_wudev_t *wudev, HANDLE *phdev)
+>>>>>>> 393ac6a... vhci, let a webcam with IAD be detected as COMPOSITE:userspace/src/usbip/usbip_attach.c
 {
 	HANDLE hdev;
 	int rc;
@@ -52,9 +60,13 @@ import_device(SOCKET sockfd, pvhci_pluginfo_t pluginfo, HANDLE *phdev)
 
 	dbg("got free port %d", port);
 
+<<<<<<< HEAD:userspace/src/usbip/usbip_attach_ude.c
 	pluginfo->port = port;
 
 	rc = usbip_vhci_attach_device_ude(hdev, pluginfo);
+=======
+	rc = usbip_vhci_attach_device(hdev, port, wudev);
+>>>>>>> 393ac6a... vhci, let a webcam with IAD be detected as COMPOSITE:userspace/src/usbip/usbip_attach.c
 
 	if (rc < 0) {
 		err("import device");
@@ -107,7 +119,11 @@ static int query_import_device(SOCKET sockfd, const char *busid, HANDLE *phdev, 
 	int rc;
 	struct op_import_request request;
 	struct op_import_reply   reply;
+<<<<<<< HEAD:userspace/src/usbip/usbip_attach_ude.c
 	pvhci_pluginfo_t	pluginfo;
+=======
+	usbip_wudev_t	wuDev;
+>>>>>>> 393ac6a... vhci, let a webcam with IAD be detected as COMPOSITE:userspace/src/usbip/usbip_attach.c
 	uint16_t code = OP_REP_IMPORT;
 	unsigned	devid;
 
@@ -152,6 +168,7 @@ static int query_import_device(SOCKET sockfd, const char *busid, HANDLE *phdev, 
 		return 1;
 	}
 
+<<<<<<< HEAD:userspace/src/usbip/usbip_attach_ude.c
 	devid = reply.udev.busnum << 16 | reply.udev.devnum;
 	pluginfo = build_pluginfo(sockfd, devid);
 	if (pluginfo == NULL)
@@ -164,6 +181,12 @@ static int query_import_device(SOCKET sockfd, const char *busid, HANDLE *phdev, 
 
 	/* import a device */
 	return import_device(sockfd, pluginfo, phdev);
+=======
+	get_wudev(sockfd, &wuDev, &reply.udev);
+
+	/* import a device */
+	return import_device(sockfd, &wuDev, phdev);
+>>>>>>> 393ac6a... vhci, let a webcam with IAD be detected as COMPOSITE:userspace/src/usbip/usbip_attach.c
 }
 
 static int

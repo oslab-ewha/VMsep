@@ -135,6 +135,9 @@ vpdo_get_nodeconn_info(pvpdo_dev_t vpdo, PUSB_NODE_CONNECTION_INFORMATION connin
 #define USBIP_DEVICE_DESC	L"USB Device Over IP"
 #define USBIP_DEVICE_LOCINFO	L"on USB/IP VHCI"
 
+/* Device with IAD(Interface Association Descriptor) */
+#define IS_IAD_DEVICE(vpdo)	((vpdo)->usbclass == 0xef && (vpdo)->subclass == 0x02 && (vpdo)->protocol == 0x01)
+
 extern PAGEABLE NTSTATUS
 destroy_vpdo(pusbip_vpdo_dev_t vpdo);
 
@@ -317,11 +320,11 @@ vhci_QueryDeviceCaps_vpdo(pusbip_vpdo_dev_t vpdo, PIRP Irp)
 	// does not support an address, the bus driver leaves this
 	// member at its default value of 0xFFFFFFFF. In this example
 	// the location address is same as instance id.
-	deviceCapabilities->Address = vpdo->SerialNo;
+	deviceCapabilities->Address = vpdo->port;
 
 	// UINumber specifies a number associated with the device that can
 	// be displayed in the user interface.
-	deviceCapabilities->UINumber = vpdo->SerialNo;
+	deviceCapabilities->UINumber = vpdo->port;
 
 	return STATUS_SUCCESS;
 }
@@ -349,7 +352,7 @@ setup_vpdo_inst_id(pusbip_vpdo_dev_t vpdo, PIRP irp)
 	if (id_inst == NULL) {
 		return STATUS_INSUFFICIENT_RESOURCES;
 	}
-	RtlStringCchPrintfW(id_inst, 5, L"%04hx", vpdo->SerialNo);
+	RtlStringCchPrintfW(id_inst, 5, L"%04hx", vpdo->port);
 	irp->IoStatus.Information = (ULONG_PTR)id_inst;
 	return STATUS_SUCCESS;
 }
@@ -379,10 +382,10 @@ setup_vpdo_compat_ids(pusbip_vpdo_dev_t vpdo, PIRP irp)
 	if (ids_compat == NULL) {
 		return STATUS_INSUFFICIENT_RESOURCES;
 	}
-	RtlStringCchPrintfW(ids_compat, 33, L"USB\\Class_%02x&SubClass_%02x&Prot_%02x", vpdo->usbclass, vpdo->subclass, vpdo->protocol);
-	RtlStringCchPrintfW(ids_compat + 33, 25, L"USB\\Class_%02x&SubClass_%02x", vpdo->usbclass, vpdo->subclass);
-	RtlStringCchPrintfW(ids_compat + 58, 13, L"USB\\Class_%02x", vpdo->usbclass);
-	if (vpdo->inum > 1) {
+	RtlStringCchPrintfW(ids_compat, 33, L"USB\\Class_%02hhx&SubClass_%02hhx&Prot_%02hhx", vpdo->usbclass, vpdo->subclass, vpdo->protocol);
+	RtlStringCchPrintfW(ids_compat + 33, 25, L"USB\\Class_%02hhx&SubClass_%02hhx", vpdo->usbclass, vpdo->subclass);
+	RtlStringCchPrintfW(ids_compat + 58, 13, L"USB\\Class_%02hhx", vpdo->usbclass);
+	if (vpdo->inum > 1 || IS_IAD_DEVICE(vpdo)) {
 		RtlStringCchCopyW(ids_compat + 71, 14, L"USB\\COMPOSITE");
 		ids_compat[85] = L'\0';
 	}

@@ -103,9 +103,8 @@ typedef struct
 	// The array itself also null terminated
 	USHORT	vendor, product, revision;
 	UCHAR	usbclass, subclass, protocol, inum;
-
-	// Unique serial number of the device on the bus
-	ULONG		SerialNo;
+	// unique port number of the device on the bus
+	ULONG	port;
 
 	// Link point to hold all the vpdos for a single bus together
 	LIST_ENTRY	Link;

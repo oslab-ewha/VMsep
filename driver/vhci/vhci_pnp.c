@@ -883,12 +883,12 @@ vhci_get_ports_status(ioctl_usbip_vhci_get_ports_status *st, pusbip_vhub_dev_t v
 
 	for (entry = vhub->head_vpdo.Flink; entry != &vhub->head_vpdo; entry = entry->Flink) {
 		vpdo = CONTAINING_RECORD (entry, usbip_vpdo_dev_t, Link);
-		if (vpdo->SerialNo > 127 || vpdo->SerialNo == 0) {
+		if (vpdo->port > 127 || vpdo->port == 0) {
 			DBGE(DBG_PNP, "strange error");
 		}
-		if (st->u.max_used_port < (char)vpdo->SerialNo)
-			st->u.max_used_port = (char)vpdo->SerialNo;
-		st->u.port_status[vpdo->SerialNo] = 1;
+		if (st->u.max_used_port < (char)vpdo->port)
+			st->u.max_used_port = (char)vpdo->port;
+		st->u.port_status[vpdo->port] = 1;
 	}
 	ExReleaseFastMutex(&vhub->Mutex);
 	*info = sizeof(*st);
@@ -898,6 +898,7 @@ vhci_get_ports_status(ioctl_usbip_vhci_get_ports_status *st, pusbip_vhub_dev_t v
 
 PAGEABLE NTSTATUS
 <<<<<<< HEAD
+<<<<<<< HEAD
 vhci_pnp(__in PDEVICE_OBJECT devobj, __in PIRP irp)
 {
 	pvdev_t		vdev = DEVOBJ_TO_VDEV(devobj);
@@ -905,6 +906,9 @@ vhci_pnp(__in PDEVICE_OBJECT devobj, __in PIRP irp)
 	NTSTATUS	status;
 =======
 vhci_unplug_dev(int addr, pusbip_vhub_dev_t vhub)
+=======
+vhci_unplug_dev(ULONG port, pusbip_vhub_dev_t vhub)
+>>>>>>> 393ac6a... vhci, let a webcam with IAD be detected as COMPOSITE
 {
 	pusbip_vpdo_dev_t	vpdo;
 	PLIST_ENTRY		entry;
@@ -913,6 +917,7 @@ vhci_unplug_dev(int addr, pusbip_vhub_dev_t vhub)
 
 	PAGED_CODE();
 
+<<<<<<< HEAD
 	irpstack = IoGetCurrentIrpStackLocation(irp);
 
 <<<<<<< HEAD
@@ -985,6 +990,12 @@ vhci_unplug_dev(int addr, pusbip_vhub_dev_t vhub)
 			status = irp_done(irp, irp->IoStatus.Status);
 		break;
 	}
+=======
+	if (port > 127)
+		return STATUS_INVALID_PARAMETER;
+
+	all = (0 == port);
+>>>>>>> 393ac6a... vhci, let a webcam with IAD be detected as COMPOSITE
 
 <<<<<<< HEAD
 END:
@@ -995,13 +1006,11 @@ END:
 	if (all) {
 		DBGI(DBG_PNP, "Plugging out all the devices!\n");
 	} else {
-		DBGI(DBG_PNP, "Plugging out single device: %d\n", addr);
+		DBGI(DBG_PNP, "Plugging out single device: port: %u\n", port);
 	}
 
 	if (vhub->n_vpdos == 0) {
-		//
 		// We got a 2nd plugout...somebody in user space isn't playing nice!!!
-		//
 		DBGW(DBG_PNP, "BAD BAD BAD...2 removes!!! Send only one!\n");
 		ExReleaseFastMutex(&vhub->Mutex);
 		return STATUS_NO_SUCH_DEVICE;
@@ -1010,10 +1019,10 @@ END:
 	for (entry = vhub->head_vpdo.Flink; entry != &vhub->head_vpdo; entry = entry->Flink) {
 		vpdo = CONTAINING_RECORD(entry, usbip_vpdo_dev_t, Link);
 
-		DBGI(DBG_PNP, "found device %d\n", vpdo->SerialNo);
+		DBGI(DBG_PNP, "found device: port: %d\n", vpdo->port);
 
-		if (all || addr == (int)vpdo->SerialNo) {
-			DBGI(DBG_PNP, "Plugging out %d\n", vpdo->SerialNo);
+		if (all || port == vpdo->port) {
+			DBGI(DBG_PNP, "Plugging out: port: %u\n", vpdo->port);
 			vpdo->Present = FALSE;
 			complete_pending_read_irp(vpdo);
 			found = 1;
@@ -1041,7 +1050,7 @@ END:
 		}
 		ExReleaseFastMutex(&vhub->Mutex);
 
-		DBGI(DBG_PNP, "Device %d plug out finished\n", addr);
+		DBGI(DBG_PNP, "Device %u plug out finished\n", port);
 		return  STATUS_SUCCESS;
 	}
 >>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
@@ -1060,14 +1069,14 @@ vhci_eject_device(PUSBIP_VHCI_EJECT_HARDWARE Eject, pusbip_vhub_dev_t vhub)
 
 	PAGED_CODE ();
 
-	ejectAll = (0 == Eject->SerialNo);
+	ejectAll = (0 == Eject->port);
 
 	ExAcquireFastMutex(&vhub->Mutex);
 
 	if (ejectAll) {
 		DBGI(DBG_PNP, "Ejecting all the vpdo's!\n");
 	} else {
-		DBGI(DBG_PNP, "Ejecting %d\n", Eject->SerialNo);
+		DBGI(DBG_PNP, "Ejecting: port: %u\n", Eject->port);
 	}
 
 	if (vhub->n_vpdos == 0) {
@@ -1081,10 +1090,10 @@ vhci_eject_device(PUSBIP_VHCI_EJECT_HARDWARE Eject, pusbip_vhub_dev_t vhub)
 	for (entry = vhub->head_vpdo.Flink; entry != &vhub->head_vpdo; entry = entry->Flink) {
 		vpdo = CONTAINING_RECORD(entry, usbip_vpdo_dev_t, Link);
 
-		DBGI(DBG_PNP, "found device %d\n", vpdo->SerialNo);
+		DBGI(DBG_PNP, "found device: %u\n", vpdo->port);
 
-		if (ejectAll || Eject->SerialNo == vpdo->SerialNo) {
-			DBGI(DBG_PNP, "Ejected %d\n", vpdo->SerialNo);
+		if (ejectAll || Eject->port == vpdo->port) {
+			DBGI(DBG_PNP, "Ejected: %u\n", vpdo->port);
 			found = TRUE;
 			IoRequestDeviceEject(vpdo->common.Self);
 			if (!ejectAll) {
@@ -1098,7 +1107,7 @@ vhci_eject_device(PUSBIP_VHCI_EJECT_HARDWARE Eject, pusbip_vhub_dev_t vhub)
 		return STATUS_SUCCESS;
 	}
 
-	DBGW(DBG_PNP, "Device %d is not present\n", Eject->SerialNo);
+	DBGW(DBG_PNP, "Device %u is not present\n", Eject->port);
 
 	return STATUS_INVALID_PARAMETER;
 >>>>>>> 48e1018... Beautify VHCI driver code

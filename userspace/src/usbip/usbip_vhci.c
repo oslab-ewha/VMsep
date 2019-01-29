@@ -104,7 +104,11 @@ usbip_vhci_get_free_port(HANDLE hdev)
 }
 
 int
+<<<<<<< HEAD
 usbip_vhci_attach_device(HANDLE hdev, int port, const char *instid, usbip_wudev_t *wudev)
+=======
+usbip_vhci_attach_device(HANDLE hdev, int port, usbip_wudev_t *wudev)
+>>>>>>> 393ac6a... vhci, let a webcam with IAD be detected as COMPOSITE
 {
 	ioctl_usbip_vhci_plugin  plugin;
 	unsigned long	unused;
@@ -120,6 +124,7 @@ usbip_vhci_attach_device(HANDLE hdev, int port, const char *instid, usbip_wudev_
 	plugin.protocol = wudev->bDeviceProtocol;
 
 	plugin.port = port;
+<<<<<<< HEAD
 
 	if (instid != NULL)
 		mbstowcs_s(NULL, plugin.winstid, MAX_VHCI_INSTANCE_ID, instid, _TRUNCATE);
@@ -134,6 +139,8 @@ usbip_vhci_attach_device(HANDLE hdev, int port, const char *instid, usbip_wudev_
 
 	return 0;
 }
+=======
+>>>>>>> 393ac6a... vhci, let a webcam with IAD be detected as COMPOSITE
 
 int
 usbip_vhci_attach_device_ude(HANDLE hdev, pvhci_pluginfo_t pluginfo)

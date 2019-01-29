@@ -18,5 +18,9 @@
 extern PAGEABLE NTSTATUS vhci_unplug_port(pvhci_dev_t vhci, ULONG port);
 =======
 PAGEABLE NTSTATUS
+<<<<<<< HEAD
 vhci_unplug_dev(int addr, pusbip_vhub_dev_t vhub);
 >>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
+=======
+vhci_unplug_dev(ULONG port, pusbip_vhub_dev_t vhub);
+>>>>>>> 393ac6a... vhci, let a webcam with IAD be detected as COMPOSITE

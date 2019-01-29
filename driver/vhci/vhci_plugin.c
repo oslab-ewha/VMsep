@@ -76,13 +76,14 @@ vhci_init_vpdo(pusbip_vpdo_dev_t vpdo);
 PAGEABLE NTSTATUS
 vhci_plugin_dev(ioctl_usbip_vhci_plugin *plugin, pusbip_vhub_dev_t vhub, PFILE_OBJECT fo)
 {
-	PDEVICE_OBJECT      devobj;
-	pusbip_vpdo_dev_t    vpdo, devpdo_old;
-	NTSTATUS            status;
-	PLIST_ENTRY         entry;
+	PDEVICE_OBJECT		devobj;
+	pusbip_vpdo_dev_t	vpdo, devpdo_old;
+	PLIST_ENTRY	entry;
+	NTSTATUS	status;
 
 	PAGED_CODE();
 
+<<<<<<< HEAD
 	DBGI(DBG_PNP, "Exposing vpdo: addr: %d, vendor:product: %04x:%04x\n", plugin->addr, plugin->vendor, plugin->product);
 >>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 
@@ -91,6 +92,11 @@ vhci_plugin_dev(ioctl_usbip_vhci_plugin *plugin, pusbip_vhub_dev_t vhub, PFILE_O
 
 <<<<<<< HEAD
 	if (!vhub_is_empty_port(VHUB_FROM_VHCI(vhci), plugin->port))
+=======
+	DBGI(DBG_IOCTL, "Plugin vpdo: port: %hhd, vendor:product: %04hx:%04hx\n", plugin->port, plugin->vendor, plugin->product);
+
+	if (plugin->port <= 0)
+>>>>>>> 393ac6a... vhci, let a webcam with IAD be detected as COMPOSITE
 		return STATUS_INVALID_PARAMETER;
 
 	if ((devobj = vdev_create(TO_DEVOBJ(vhci)->DriverObject, VDEV_VPDO)) == NULL)
@@ -121,7 +127,7 @@ vhci_plugin_dev(ioctl_usbip_vhci_plugin *plugin, pusbip_vhub_dev_t vhub, PFILE_O
 
 	for (entry = vhub->head_vpdo.Flink; entry != &vhub->head_vpdo; entry = entry->Flink) {
 		vpdo = CONTAINING_RECORD(entry, usbip_vpdo_dev_t, Link);
-		if ((ULONG)plugin->addr == vpdo->SerialNo &&
+		if ((ULONG)plugin->port == vpdo->port &&
 			vpdo->common.DevicePnPState != SurpriseRemovePending) {
 			ExReleaseFastMutex(&vhub->Mutex);
 			return STATUS_INVALID_PARAMETER;
@@ -210,7 +216,7 @@ vhci_unplug_port(pvhci_dev_t vhci, ULONG port)
 		IoDeleteDevice(devobj);
 		return STATUS_INVALID_PARAMETER;
 	}
-	vpdo->SerialNo = plugin->addr;
+	vpdo->port = plugin->port;
 	vpdo->fo = fo;
 	vpdo->devid = plugin->devid;
 	vpdo->speed = plugin->speed;
