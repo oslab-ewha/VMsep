@@ -105,6 +105,16 @@ process_irp_urb_req(pusbip_vpdo_dev_t vpdo, PIRP irp, PURB urb)
 	}
 }
 
+static NTSTATUS
+setup_topology_address(pusbip_vpdo_dev_t vpdo, PIO_STACK_LOCATION irpStack)
+{
+	PUSB_TOPOLOGY_ADDRESS	topoaddr;
+
+	topoaddr = (PUSB_TOPOLOGY_ADDRESS)irpStack->Parameters.Others.Argument1;
+	topoaddr->RootHubPortNumber = (USHORT)vpdo->port;
+	return STATUS_SUCCESS;
+}
+
 PAGEABLE NTSTATUS
 vhci_internal_ioctl(__in PDEVICE_OBJECT devobj, __in PIRP Irp)
 {
@@ -149,6 +159,9 @@ vhci_internal_ioctl(__in PDEVICE_OBJECT devobj, __in PIRP Irp)
 		break;
 	case IOCTL_INTERNAL_USB_RESET_PORT:
 		status = submit_urbr(vpdo, Irp);
+		break;
+	case IOCTL_INTERNAL_USB_GET_TOPOLOGY_ADDRESS:
+		status = setup_topology_address(vpdo, irpStack);
 		break;
 	default:
 		DBGE(DBG_IOCTL, "unhandled internal ioctl: %s\n", dbg_vhci_ioctl_code(ioctl_code));

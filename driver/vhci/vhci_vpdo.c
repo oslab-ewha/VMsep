@@ -960,6 +960,12 @@ vhci_pnp_vpdo(PDEVICE_OBJECT devobj, PIRP Irp, PIO_STACK_LOCATION IrpStack, pusb
 	case IRP_MN_DEVICE_ENUMERATED:
 		status = STATUS_SUCCESS;
 		break;
+	case IRP_MN_QUERY_LEGACY_BUS_INFORMATION:
+	case IRP_MN_FILTER_RESOURCE_REQUIREMENTS:
+	case IRP_MN_QUERY_PNP_DEVICE_STATE:
+		/* not handled */
+		status = Irp->IoStatus.Status;
+		break;
 	default:
 		DBGW(DBG_PNP, "not handled: %s\n", dbg_pnp_minor(IrpStack->MinorFunction));
 
