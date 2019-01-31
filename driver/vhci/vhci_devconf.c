@@ -19,7 +19,11 @@ dbg_pipe(PUSBD_PIPE_INFORMATION pipe)
 {
 	static char	buf[512];
 
+<<<<<<< HEAD
 	libdrv_snprintf(buf, 512, "addr:%02x intv:%d typ:%d mps:%d mts:%d flags:%x",
+=======
+	dbg_snprintf(buf, 512, "addr:%02x intv:%d typ:%d mps:%d mts:%d flags:%x",
+>>>>>>> a32b206... vhci, code cleanup for usb descriptor manipulation
 		pipe->EndpointAddress, pipe->Interval, pipe->PipeType, pipe->PipeFlags,
 		pipe->MaximumPacketSize, pipe->MaximumTransferSize, pipe->PipeFlags);
 	return buf;
@@ -47,7 +51,10 @@ static NTSTATUS
 setup_endpoints(USBD_INTERFACE_INFORMATION *intf, PUSB_CONFIGURATION_DESCRIPTOR dsc_conf, PUSB_INTERFACE_DESCRIPTOR dsc_intf, UCHAR speed)
 {
 	PVOID	start = dsc_intf;
+<<<<<<< HEAD
 	ULONG	n_pipes_setup;
+=======
+>>>>>>> a32b206... vhci, code cleanup for usb descriptor manipulation
 	unsigned int	i;
 
 	n_pipes_setup = (intf->Length - sizeof(USBD_INTERFACE_INFORMATION)) / sizeof(USBD_PIPE_INFORMATION) + 1;
@@ -58,9 +65,12 @@ setup_endpoints(USBD_INTERFACE_INFORMATION *intf, PUSB_CONFIGURATION_DESCRIPTOR 
 		n_pipes_setup = intf->NumberOfPipes;
 	}
 
+<<<<<<< HEAD
 	for (i = 0; i < n_pipes_setup; i++) {
 		PUSB_ENDPOINT_DESCRIPTOR	dsc_ep;
 
+=======
+>>>>>>> a32b206... vhci, code cleanup for usb descriptor manipulation
 		dsc_ep = dsc_next_ep(dsc_conf, start);
 		if (dsc_ep == NULL) {
 			DBGW(DBG_IOCTL, "no ep desc\n");
@@ -68,9 +78,14 @@ setup_endpoints(USBD_INTERFACE_INFORMATION *intf, PUSB_CONFIGURATION_DESCRIPTOR 
 		}
 
 		set_pipe(&intf->Pipes[i], dsc_ep, speed);
+<<<<<<< HEAD
 		DBGI(DBG_IOCTL, "ep setup[%u]: %s\n", i, dbg_pipe(&intf->Pipes[i]));
 		start = dsc_ep;
 
+=======
+		DBGI(DBG_IOCTL, "ep setup: %s\n", dbg_pipe(&intf->Pipes[i]));
+		start = dsc_ep;
+>>>>>>> a32b206... vhci, code cleanup for usb descriptor manipulation
 	}
 	return TRUE;
 }
@@ -91,12 +106,29 @@ setup_intf(USBD_INTERFACE_INFORMATION *intf, PUSB_CONFIGURATION_DESCRIPTOR dsc_c
 		DBGW(DBG_IOCTL, "no interface desc\n");
 		return STATUS_INVALID_DEVICE_REQUEST;
 	}
+<<<<<<< HEAD
+=======
+	if (dsc_intf->bNumEndpoints != intf->NumberOfPipes) {
+		DBGW(DBG_IOCTL, "numbers of pipes are not same:(%d,%d)\n", dsc_intf->bNumEndpoints, intf->NumberOfPipes);
+		return STATUS_INVALID_DEVICE_REQUEST;
+	}
+
+	if (intf->NumberOfPipes > 0) {
+		if (sizeof(USBD_INTERFACE_INFORMATION) + (intf->NumberOfPipes - 1) * sizeof(USBD_PIPE_INFORMATION) > intf->Length) {
+			DBGE(DBG_URB, "insufficient interface information size\n");
+			return STATUS_INVALID_PARAMETER;
+		}
+	}
+>>>>>>> a32b206... vhci, code cleanup for usb descriptor manipulation
 
 	intf->Class = dsc_intf->bInterfaceClass;
 	intf->SubClass = dsc_intf->bInterfaceSubClass;
 	intf->Protocol = dsc_intf->bInterfaceProtocol;
 	intf->InterfaceHandle = TO_INTF_HANDLE(intf->InterfaceNumber, intf->AlternateSetting);
+<<<<<<< HEAD
 	intf->NumberOfPipes = dsc_intf->bNumEndpoints;
+=======
+>>>>>>> a32b206... vhci, code cleanup for usb descriptor manipulation
 
 	if (!setup_endpoints(intf, dsc_conf, dsc_intf, speed))
 		return STATUS_INVALID_DEVICE_REQUEST;
@@ -146,3 +178,16 @@ setup_config(PUSB_CONFIGURATION_DESCRIPTOR dsc_conf, PUSBD_INTERFACE_INFORMATION
 	/* it seems we must return now */
 	return STATUS_SUCCESS;
 }
+<<<<<<< HEAD
+=======
+
+NTSTATUS
+select_interface(struct _URB_SELECT_INTERFACE *urb_seli, PUSB_CONFIGURATION_DESCRIPTOR dsc_conf, UCHAR speed)
+{
+	PUSBD_INTERFACE_INFORMATION	info_intf;
+
+	info_intf = &urb_seli->Interface;
+
+	return setup_intf(info_intf, dsc_conf, speed);
+}
+>>>>>>> a32b206... vhci, code cleanup for usb descriptor manipulation
