@@ -577,12 +577,17 @@ store_urb_iso_partial(pusbip_vpdo_dev_t vpdo, PIRP irp, PURB urb)
 		return STATUS_BUFFER_TOO_SMALL;
 
 	copy_iso_data(dst, urb_iso);
+<<<<<<< HEAD
 	vpdo->len_sent_partial = 0;
 	irp->IoStatus.Information = len_iso;
 <<<<<<< HEAD
 =======
 	vpdo->len_sent_partial = 0;
 >>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
+=======
+	vpdo->len_sent_partial = 0;
+	irp->IoStatus.Information = len_iso;
+>>>>>>> 94b35a0... vhci, bug fix for isochronous transfer
 
 	return STATUS_SUCCESS;
 }
@@ -620,6 +625,7 @@ store_urb_iso(PIRP irp, PURB urb, struct urb_req *urbr)
 	}
 	else {
 		urbr->vpdo->len_sent_partial = sizeof(struct usbip_header);
+<<<<<<< HEAD
 	}
 
 	return STATUS_SUCCESS;
@@ -738,6 +744,8 @@ store_urb_control_transfer_ex(PIRP irp, PURB urb, struct urb_req* urbr)
 		else {
 			urbr->vpdo->len_sent_partial = sizeof(struct usbip_header);
 		}
+=======
+>>>>>>> 94b35a0... vhci, bug fix for isochronous transfer
 	}
 
 	return STATUS_SUCCESS;
