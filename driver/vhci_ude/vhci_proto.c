@@ -45,4 +45,8 @@ set_cmd_unlink_usbip_header(struct usbip_header *h, unsigned long seqnum, unsign
 	h->base.direction = USBIP_DIR_OUT;
 	h->base.ep = 0;
 	h->u.cmd_unlink.seqnum = seqnum_unlink;
+<<<<<<< HEAD:driver/vhci_ude/vhci_proto.c
 }
+=======
+}
+>>>>>>> 10d26c6... vhci, notify a usbip server of urb cancellation:driver/vhci/vhci_proto.c

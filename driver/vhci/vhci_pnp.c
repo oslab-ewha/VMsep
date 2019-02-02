@@ -825,11 +825,13 @@ complete_pending_irp(pusbip_vpdo_dev_t vpdo)
 		}
 
 		ExFreeToNPagedLookasideList(&g_lookaside, urbr);
-		irp->IoStatus.Status = STATUS_DEVICE_NOT_CONNECTED;
-		IoSetCancelRoutine(irp, NULL);
-		KeRaiseIrql(DISPATCH_LEVEL, &oldirql2);
-		IoCompleteRequest (irp, IO_NO_INCREMENT);
-		KeLowerIrql(oldirql2);
+		if (irp != NULL) {
+			irp->IoStatus.Status = STATUS_DEVICE_NOT_CONNECTED;
+			IoSetCancelRoutine(irp, NULL);
+			KeRaiseIrql(DISPATCH_LEVEL, &oldirql2);
+			IoCompleteRequest(irp, IO_NO_INCREMENT);
+			KeLowerIrql(oldirql2);
+		}
 		count++;
 	} while (1);
 }

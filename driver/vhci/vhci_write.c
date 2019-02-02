@@ -458,6 +458,7 @@ process_write_irp(pusbip_vpdo_dev_t vpdo, PIRP irp)
 	}
 
 	status = process_urb_res(urbr, hdr);
+<<<<<<< HEAD
 	PIRP irp = urbr->irp;
 	free_urbr(urbr);
 
@@ -479,6 +480,23 @@ process_write_irp(pusbip_vpdo_dev_t vpdo, PIRP irp)
 			KeLowerIrql(oldirql);
 		}
 	}
+=======
+
+	if (urbr->irp != NULL) {
+		IoSetCancelRoutine(urbr->irp, NULL);
+		urbr->irp->IoStatus.Status = status;
+
+		/* it seems windows client usb driver will think
+		 * IoCompleteRequest is running at DISPATCH_LEVEL
+		 * so without this it will change IRQL sometimes,
+		 * and introduce to a dead of my userspace program
+		 */
+		KeRaiseIrql(DISPATCH_LEVEL, &oldirql);
+		IoCompleteRequest(urbr->irp, IO_NO_INCREMENT);
+		KeLowerIrql(oldirql);
+	}
+	ExFreeToNPagedLookasideList(&g_lookaside, urbr);
+>>>>>>> 10d26c6... vhci, notify a usbip server of urb cancellation
 
 	return STATUS_SUCCESS;
 }

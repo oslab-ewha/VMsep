@@ -2,6 +2,7 @@
 
 #include "vhci_dev.h"
 
+<<<<<<< HEAD
 extern NTSTATUS
 <<<<<<< HEAD
 vhci_ioctl_vhci(pvhci_dev_t vhci, PIO_STACK_LOCATION irpstack, ULONG ioctl_code, PVOID buffer, ULONG inlen, ULONG *poutlen);
@@ -25,6 +26,8 @@ vhci_ioctl(__in PDEVICE_OBJECT devobj, __in PIRP irp)
 =======
 submit_urbr(pusbip_vpdo_dev_t vpdo, PIRP irp);
 
+=======
+>>>>>>> 10d26c6... vhci, notify a usbip server of urb cancellation
 extern PAGEABLE NTSTATUS
 vhci_plugin_dev(ioctl_usbip_vhci_plugin *plugin, pusbip_vhub_dev_t vhub, PFILE_OBJECT fo);
 
@@ -67,6 +70,21 @@ process_urb_get_frame(pusbip_vpdo_dev_t vpdo, PURB urb)
 }
 
 static NTSTATUS
+submit_urbr_irp(pusbip_vpdo_dev_t vpdo, PIRP irp)
+{
+	struct urb_req	*urbr;
+	NTSTATUS	status;
+
+	urbr = create_urbr(vpdo, irp, 0);
+	if (urbr == NULL)
+		return STATUS_INSUFFICIENT_RESOURCES;
+	status = submit_urbr(vpdo, urbr);
+	if (NT_ERROR(status))
+		ExFreeToNPagedLookasideList(&g_lookaside, urbr);
+	return status;
+}
+
+static NTSTATUS
 process_irp_urb_req(pusbip_vpdo_dev_t vpdo, PIRP irp, PURB urb)
 {
 	if (urb == NULL) {
@@ -97,7 +115,7 @@ process_irp_urb_req(pusbip_vpdo_dev_t vpdo, PIRP irp, PURB urb)
 	case URB_FUNCTION_GET_DESCRIPTOR_FROM_DEVICE:
 	case URB_FUNCTION_BULK_OR_INTERRUPT_TRANSFER:
 	case URB_FUNCTION_SELECT_INTERFACE:
-		return submit_urbr(vpdo, irp);
+		return submit_urbr_irp(vpdo, irp);
 	default:
 		DBGW(DBG_IOCTL, "process_irp_urb_req: unhandled function: %s: len: %d\n",
 			dbg_urbfunc(urb->UrbHeader.Function), urb->UrbHeader.Length);
@@ -158,7 +176,7 @@ vhci_internal_ioctl(__in PDEVICE_OBJECT devobj, __in PIRP Irp)
 		*(unsigned long *)irpStack->Parameters.Others.Argument1 = USBD_PORT_ENABLED | USBD_PORT_CONNECTED;
 		break;
 	case IOCTL_INTERNAL_USB_RESET_PORT:
-		status = submit_urbr(vpdo, Irp);
+		status = submit_urbr_irp(vpdo, Irp);
 		break;
 	case IOCTL_INTERNAL_USB_GET_TOPOLOGY_ADDRESS:
 		status = setup_topology_address(vpdo, irpStack);

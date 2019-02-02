@@ -15,10 +15,14 @@ extern void
 set_cmd_submit_usbip_header(struct usbip_header *h, unsigned long seqnum, unsigned int devid,
 	unsigned int direct, USBD_PIPE_HANDLE pipe, unsigned int flags, unsigned int len);
 
+<<<<<<< HEAD
 extern NTSTATUS
 vhci_ioctl_abort_pipe(pvpdo_dev_t vpdo, USBD_PIPE_HANDLE hPipe);
 
 extern void
+=======
+void
+>>>>>>> 10d26c6... vhci, notify a usbip server of urb cancellation
 set_cmd_unlink_usbip_header(struct usbip_header *h, unsigned long seqnum, unsigned int devid, unsigned long seqnum_unlink);
 
 static struct usbip_header *
@@ -869,8 +873,11 @@ store_cancelled_urbr(PIRP irp, struct urb_req *urbr)
 {
 	struct usbip_header	*hdr;
 
+<<<<<<< HEAD
 	DBGI(DBG_READ, "store_cancelled_urbr: Enter\n");
 
+=======
+>>>>>>> 10d26c6... vhci, notify a usbip server of urb cancellation
 	hdr = get_usbip_hdr_from_read_irp(irp);
 	if (hdr == NULL)
 		return STATUS_INVALID_PARAMETER;
@@ -1023,9 +1030,11 @@ process_read_irp(pusbip_vpdo_dev_t vpdo, PIRP read_irp)
 		RemoveEntryList(&urbr->list_all);
 		KeReleaseSpinLock(&vpdo->lock_urbr, oldirql);
 
-		IoSetCancelRoutine(urbr->irp, NULL);
-		urbr->irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
-		IoCompleteRequest(urbr->irp, IO_NO_INCREMENT);
+		if (urbr->irp != NULL) {
+			IoSetCancelRoutine(urbr->irp, NULL);
+			urbr->irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
+			IoCompleteRequest(urbr->irp, IO_NO_INCREMENT);
+		}
 		ExFreeToNPagedLookasideList(&g_lookaside, urbr);
 >>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 	}
