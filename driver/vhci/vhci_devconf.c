@@ -52,9 +52,13 @@ setup_endpoints(USBD_INTERFACE_INFORMATION *intf, PUSB_CONFIGURATION_DESCRIPTOR 
 {
 	PVOID	start = dsc_intf;
 <<<<<<< HEAD
+<<<<<<< HEAD
 	ULONG	n_pipes_setup;
 =======
 >>>>>>> a32b206... vhci, code cleanup for usb descriptor manipulation
+=======
+	ULONG	n_pipes_setup;
+>>>>>>> 7d1ac9f... vhci, fix invalid endpoint setup when a interface is selected
 	unsigned int	i;
 
 	n_pipes_setup = (intf->Length - sizeof(USBD_INTERFACE_INFORMATION)) / sizeof(USBD_PIPE_INFORMATION) + 1;
@@ -66,6 +70,9 @@ setup_endpoints(USBD_INTERFACE_INFORMATION *intf, PUSB_CONFIGURATION_DESCRIPTOR 
 	}
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 7d1ac9f... vhci, fix invalid endpoint setup when a interface is selected
 	for (i = 0; i < n_pipes_setup; i++) {
 		PUSB_ENDPOINT_DESCRIPTOR	dsc_ep;
 
@@ -79,6 +86,7 @@ setup_endpoints(USBD_INTERFACE_INFORMATION *intf, PUSB_CONFIGURATION_DESCRIPTOR 
 
 		set_pipe(&intf->Pipes[i], dsc_ep, speed);
 <<<<<<< HEAD
+<<<<<<< HEAD
 		DBGI(DBG_IOCTL, "ep setup[%u]: %s\n", i, dbg_pipe(&intf->Pipes[i]));
 		start = dsc_ep;
 
@@ -86,6 +94,11 @@ setup_endpoints(USBD_INTERFACE_INFORMATION *intf, PUSB_CONFIGURATION_DESCRIPTOR 
 		DBGI(DBG_IOCTL, "ep setup: %s\n", dbg_pipe(&intf->Pipes[i]));
 		start = dsc_ep;
 >>>>>>> a32b206... vhci, code cleanup for usb descriptor manipulation
+=======
+		DBGI(DBG_IOCTL, "ep setup[%u]: %s\n", i, dbg_pipe(&intf->Pipes[i]));
+		start = dsc_ep;
+
+>>>>>>> 7d1ac9f... vhci, fix invalid endpoint setup when a interface is selected
 	}
 	return TRUE;
 }
@@ -107,6 +120,7 @@ setup_intf(USBD_INTERFACE_INFORMATION *intf, PUSB_CONFIGURATION_DESCRIPTOR dsc_c
 		return STATUS_INVALID_DEVICE_REQUEST;
 	}
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 	if (dsc_intf->bNumEndpoints != intf->NumberOfPipes) {
 		DBGW(DBG_IOCTL, "numbers of pipes are not same:(%d,%d)\n", dsc_intf->bNumEndpoints, intf->NumberOfPipes);
@@ -120,15 +134,21 @@ setup_intf(USBD_INTERFACE_INFORMATION *intf, PUSB_CONFIGURATION_DESCRIPTOR dsc_c
 		}
 	}
 >>>>>>> a32b206... vhci, code cleanup for usb descriptor manipulation
+=======
+>>>>>>> 7d1ac9f... vhci, fix invalid endpoint setup when a interface is selected
 
 	intf->Class = dsc_intf->bInterfaceClass;
 	intf->SubClass = dsc_intf->bInterfaceSubClass;
 	intf->Protocol = dsc_intf->bInterfaceProtocol;
 	intf->InterfaceHandle = TO_INTF_HANDLE(intf->InterfaceNumber, intf->AlternateSetting);
 <<<<<<< HEAD
+<<<<<<< HEAD
 	intf->NumberOfPipes = dsc_intf->bNumEndpoints;
 =======
 >>>>>>> a32b206... vhci, code cleanup for usb descriptor manipulation
+=======
+	intf->NumberOfPipes = dsc_intf->bNumEndpoints;
+>>>>>>> 7d1ac9f... vhci, fix invalid endpoint setup when a interface is selected
 
 	if (!setup_endpoints(intf, dsc_conf, dsc_intf, speed))
 		return STATUS_INVALID_DEVICE_REQUEST;
