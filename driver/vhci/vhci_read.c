@@ -1016,6 +1016,7 @@ process_read_irp(pusbip_vpdo_dev_t vpdo, PIRP read_irp)
 
 	if (status != STATUS_SUCCESS) {
 <<<<<<< HEAD
+<<<<<<< HEAD
 		RemoveEntryListInit(&urbr->list_all);
 		KeReleaseSpinLock(&vpdo->lock_urbr, oldirql);
 
@@ -1036,6 +1037,9 @@ process_read_irp(pusbip_vpdo_dev_t vpdo, PIRP read_irp)
 		}
 =======
 		RemoveEntryList(&urbr->list_all);
+=======
+		RemoveEntryListInit(&urbr->list_all);
+>>>>>>> 5bf18d1... Fix BSOD caused when a partially sent urbr is unlinked
 		KeReleaseSpinLock(&vpdo->lock_urbr, oldirql);
 
 		if (urbr->irp != NULL) {
@@ -1043,8 +1047,12 @@ process_read_irp(pusbip_vpdo_dev_t vpdo, PIRP read_irp)
 			urbr->irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
 			IoCompleteRequest(urbr->irp, IO_NO_INCREMENT);
 		}
+<<<<<<< HEAD
 		ExFreeToNPagedLookasideList(&g_lookaside, urbr);
 >>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
+=======
+		free_urbr(urbr);
+>>>>>>> 5bf18d1... Fix BSOD caused when a partially sent urbr is unlinked
 	}
 	else {
 		if (vpdo->len_sent_partial == 0) {

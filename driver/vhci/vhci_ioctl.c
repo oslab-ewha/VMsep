@@ -80,7 +80,7 @@ submit_urbr_irp(pusbip_vpdo_dev_t vpdo, PIRP irp)
 		return STATUS_INSUFFICIENT_RESOURCES;
 	status = submit_urbr(vpdo, urbr);
 	if (NT_ERROR(status))
-		ExFreeToNPagedLookasideList(&g_lookaside, urbr);
+		free_urbr(urbr);
 	return status;
 }
 

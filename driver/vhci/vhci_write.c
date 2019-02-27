@@ -495,8 +495,12 @@ process_write_irp(pusbip_vpdo_dev_t vpdo, PIRP irp)
 		IoCompleteRequest(urbr->irp, IO_NO_INCREMENT);
 		KeLowerIrql(oldirql);
 	}
+<<<<<<< HEAD
 	ExFreeToNPagedLookasideList(&g_lookaside, urbr);
 >>>>>>> 10d26c6... vhci, notify a usbip server of urb cancellation
+=======
+	free_urbr(urbr);
+>>>>>>> 5bf18d1... Fix BSOD caused when a partially sent urbr is unlinked
 
 	return STATUS_SUCCESS;
 }

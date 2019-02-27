@@ -785,7 +785,7 @@ static void
 complete_pending_irp(pusbip_vpdo_dev_t vpdo)
 {
 	int	count = 0;
-	KIRQL oldirql;
+	KIRQL	oldirql;
 
 	//FIXME
 	DBGI(DBG_PNP, "finish pending irp\n");
@@ -793,7 +793,6 @@ complete_pending_irp(pusbip_vpdo_dev_t vpdo)
 	do {
 		struct urb_req	*urbr;
 		PIRP	irp;
-		PLIST_ENTRY	le;
 		KIRQL	oldirql2;
 
 		KeAcquireSpinLockAtDpcLevel(&vpdo->lock_urbr);
@@ -807,8 +806,9 @@ complete_pending_irp(pusbip_vpdo_dev_t vpdo)
 			break;
 		}
 
-		le = RemoveHeadList(&vpdo->head_urbr);
-		urbr = CONTAINING_RECORD(le, struct urb_req, list_all);
+		urbr = CONTAINING_RECORD(vpdo->head_urbr.Flink, struct urb_req, list_all);
+		RemoveEntryListInit(&urbr->list_all);
+		RemoveEntryListInit(&urbr->list_state);
 		/* FIMXE event */
 		irp = urbr->irp;
 
@@ -824,7 +824,7 @@ complete_pending_irp(pusbip_vpdo_dev_t vpdo)
 			KeReleaseSpinLock(&vpdo->lock_urbr, DISPATCH_LEVEL);
 		}
 
-		ExFreeToNPagedLookasideList(&g_lookaside, urbr);
+		free_urbr(urbr);
 		if (irp != NULL) {
 			irp->IoStatus.Status = STATUS_DEVICE_NOT_CONNECTED;
 			IoSetCancelRoutine(irp, NULL);
