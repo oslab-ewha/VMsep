@@ -132,6 +132,11 @@ vpdo_get_nodeconn_info(pvpdo_dev_t vpdo, PUSB_NODE_CONNECTION_INFORMATION connin
 #include "vhci_pnp.h"
 #include "usbip_proto.h"
 
+// IRP_MN_DEVICE_ENUMERATED is included by default since Windows 7.
+#if WINVER<0x0701
+#define IRP_MN_DEVICE_ENUMERATED 0x19
+#endif
+
 #define USBIP_DEVICE_DESC	L"USB Device Over IP"
 #define USBIP_DEVICE_LOCINFO	L"on USB/IP VHCI"
 
