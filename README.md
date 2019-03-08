@@ -1,8 +1,13 @@
 # VMsep (VM-separated commit on jbd2/ext4)
 
+<<<<<<< HEAD
 - Nested ext4 filesystems on both guest and host machine can incur excessively frequent journal commits.
 - VMsep can dramatically reduce write traffic by managing modified file blocks from each guest as a separate list and splitting the running transaction list into two sub-transactions.
 - Filebench and IOzone benchmarks show that VMsep improves the I/O throughput by 19.5% on average and up to 64.2% over existing systems.
+=======
+- This project aims to support both a USBIP server and a client on Windows platform.
+
+>>>>>>> 80733de... Add some notes about the build and test environment
 
 ## Build
 
@@ -13,6 +18,7 @@
   - Right-click on the project > Properties > Driver Settings > Target OS version > Windows 7
 
 ### Build Tools
+<<<<<<< HEAD
 - Visual Studio 2019 Community(v142)
   - Build with VS 2017(v141) is also possible if platform toolset in setting is configured to v141
 - Windows SDK 10.0.18362.0(recommended)
@@ -24,6 +30,14 @@
 ### Build Process
 - Open usbip_win.sln
 - If VS 2017 is used, SDK version for userspace projects(usbip, usbip_common, usbipd, stubctl) should be adjusted.
+=======
+- Visual Studio 2017 Community
+- Windows SDK 10.0.17134
+- Windows Driver Kit 10.0.17134
+
+### Build Process
+- Open usbip_win.sln
+>>>>>>> 80733de... Add some notes about the build and test environment
 - Set certificate driver signing for usbip\_stub and usbip\_vhci projects.
   - Right-click on the project > Properties > Driver Signing > Test Certificate
   - Browse to driver/usbip\_test.pfx
@@ -35,6 +49,7 @@
 
 ### Windows USB/IP server
 
+<<<<<<< HEAD
 - Prepare a linux machine as a USB/IP client (or windows usbip-win vhci client)
   - Tested on Ubuntu 16.04
   - Kernel 4.15.0-29 (USB/IP kernel module crash was observed on some other version)
@@ -44,6 +59,17 @@
   - Certificate should be installed into
     1. "Trusted Root Certification Authority" in "Local Computer" (not current user) and
     2. "Trusted Publishers" in "Local Computer" (not current user)
+=======
+- Prepare a linux machine as a USBIP client
+  - tested on Ubuntu 16.04
+  - Kernel 4.15.0-29 (usbip kernel module crash was observed on some other version)
+  - \# modprobe vhci-hcd
+
+- Install USBIP test certificate
+  - Install driver/usbip\_test.pfx(password: usbip)
+  - Certificate should be installed into "Trusted Root Certification Authority" and "Trusted Publishers"
+    on local machine (not current user)
+>>>>>>> 80733de... Add some notes about the build and test environment
 - Enable test signing
   - `> bcdedit.exe /set TESTSIGNING ON`
   - reboot the system to apply
@@ -94,6 +120,7 @@ usbip.exe list -l
   - reboot the system to apply
 - Copy vhci driver files into a folder in target machine
 
+<<<<<<< HEAD
   - If you're testing vhci(ude), copy `usbip.exe`, `usbip_vhci_udf.sys`, `usbip_vhci_udf.inf`, `usbip_vhci_udf.cat` into a folder in target machine
   - If you're testing vhci(WDM), copy `usbip.exe`, `usbip_vhci.sys`, `usbip_vhci.inf`, `usbip_root.inf`, `usbip_vhci.cat` into a folder in target machine
   - You can find all files in output folder after build or on [release](https://github.com/cezanne/usbip-win/releases) page.
@@ -132,6 +159,9 @@ usbip.exe list -l
 - Disable test signing
   - `> bcdedit.exe /set TESTSIGNING OFF`
   - reboot the system to apply
+=======
+### USBIP client
+>>>>>>> 80733de... Add some notes about the build and test environment
 
 ### Reporting Bug
 - usbip-win is not yet ready for production use. We could find problems with more detailed logs.
