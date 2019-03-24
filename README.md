@@ -1,11 +1,15 @@
 # VMsep (VM-separated commit on jbd2/ext4)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 - Nested ext4 filesystems on both guest and host machine can incur excessively frequent journal commits.
 - VMsep can dramatically reduce write traffic by managing modified file blocks from each guest as a separate list and splitting the running transaction list into two sub-transactions.
 - Filebench and IOzone benchmarks show that VMsep improves the I/O throughput by 19.5% on average and up to 64.2% over existing systems.
 =======
 - This project aims to support both a USBIP server and a client on Windows platform.
+=======
+- This project aims to support both a USB/IP server and a client on Windows platform.
+>>>>>>> 1093a90... Fix typos, uniformize "USB/IP", clarify some details.
 
 >>>>>>> 80733de... Add some notes about the build and test environment
 
@@ -50,6 +54,7 @@
 ### Windows USB/IP server
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 - Prepare a linux machine as a USB/IP client (or windows usbip-win vhci client)
   - Tested on Ubuntu 16.04
   - Kernel 4.15.0-29 (USB/IP kernel module crash was observed on some other version)
@@ -63,16 +68,22 @@
 - Prepare a linux machine as a USBIP client
   - tested on Ubuntu 16.04
   - Kernel 4.15.0-29 (usbip kernel module crash was observed on some other version)
+=======
+- Prepare a linux machine as a USB/IP client
+  - Tested on Ubuntu 16.04
+  - Kernel 4.15.0-29 (USB/IP kernel module crash was observed on some other version)
+>>>>>>> 1093a90... Fix typos, uniformize "USB/IP", clarify some details.
   - \# modprobe vhci-hcd
 
-- Install USBIP test certificate
-  - Install driver/usbip\_test.pfx(password: usbip)
+- Install USB/IP test certificate
+  - Install driver/usbip\_test.pfx (password: usbip)
   - Certificate should be installed into "Trusted Root Certification Authority" and "Trusted Publishers"
     on local machine (not current user)
 >>>>>>> 80733de... Add some notes about the build and test environment
 - Enable test signing
   - `> bcdedit.exe /set TESTSIGNING ON`
   - reboot the system to apply
+<<<<<<< HEAD
 - Copy `usbip.exe`, `usbipd.exe`, `usb.ids`, `usbip_stub.sys`, `usbip_stub.inx` into a folder in target machine
   - You can find `usbip.exe`, `usbipd.exe`, `usbip_stub.sys` in output folder after build or on [release](https://github.com/cezanne/usbip-win/releases) page.
   - `userspace/usb.ids`
@@ -209,6 +220,65 @@ Windows Registry Editor Version 5.00
 ```
 # dmesg --follow | tee kernel_log.txt
 ```
+=======
+- Copy usbip.exe, usbipd.exe, usb.ids, usbip\_stub.sys, usbip\_stub.inx into a folder in target machine
+  - You can find usbip.exe, usbipd.exe, usbip\_stub.sys in output folder.
+  - userspace/usb.ids
+  - driver/stub/usbip\_stub.inx
+- Find USB device id
+  - You can get device id from usbip listing
+    - usbip.exe list -l
+  - Bus id is always 1. So output from usbip.exe listing is shown as:
+
+<pre><code>
+    usbip.exe list -l
+      - busid 1-59 (045e:00cb)
+        Microsoft Corp. : Basic Optical Mouse v2.0 (045e:00cb)
+      - busid 1-30 (80ee:0021)
+        VirtualBox : USB Tablet (80ee:0021)
+</code></pre>
+
+- Bind USB device to usbip stub
+  - This command replaces an existing function driver with usbip stub driver
+	- This should be executed using administrator privilege
+	- usbip\_stub.inx and usbip\_stub.sys files should be in the same folder as usbip.exe
+  - usbip.exe bind -b 1-59
+- Run usbipd.exe
+  - usbipd.exe -d -4
+	- TCP port 3240 should be allowed by firewall
+
+- Attach USB/IP device on linux machine
+  - \# usbip attach -r &lt;usbip server ip&gt; -p 1-59
+
+### Windows USB/IP client
+
+- Prepare a linux machine as a USB/IP server
+  - tested on Ubuntu 16.04(Kernerl 4.15.0-29)
+  - \# modprobe usbip-host
+
+- Run usbipd on a USB/IP server(Linux)
+  - \# usbipd -4 -d
+
+- Install USB/IP test certificate
+  - Install driver/usbip\_test.pfx(password: usbip)
+  - Certificate should be installed into "Trusted Root Certification Authority" on local machine(not current user)
+- Enable test signing
+  - bcdedit.exe /set TESTSIGNING ON
+  - reboot the system to apply
+- Copy usbip.exe, usbip\_vhci.sys, usbip\_vhci.inf, usbip\_vhci.cer, usbip\_vhci.cat into a folder in target machine
+  - You can find usbip.exe, usbip\_vhci.sys, usbip\_vhci.cer, usbip\_vhci.inf in output folder.
+  - usbip\_vhci.cat can be found from usbip\_vhci subfolder of output folder
+- Install USB/IP vhci driver
+  - Start Device manager
+  - Choose "Add Legacy Hardware" from the "Action" menu.
+  - Select 'Install the hardware that I manually select from the list'.
+  - Click 'Next'.
+  - Click 'Have Disk', click 'Browse', choose the copied folder, and click OK.
+  - Click on the 'USB/IP VHCI, and then click Next.
+  - Click Finish at 'Completing the Add/Remove Hardware Wizard.'
+- Attach a remote USB device
+  - usbip.exe attach -r &lt;usbip server ip&gt; -b 2-2
+>>>>>>> 1093a90... Fix typos, uniformize "USB/IP", clarify some details.
 
 <hr>
 <sub>This project was supported by Basic Science Research Program through the National Research Foundation of Korea(NRF) funded by the Ministry of Education(2016R1A6A3A11930295).</sub>
