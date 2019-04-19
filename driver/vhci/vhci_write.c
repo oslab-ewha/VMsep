@@ -301,12 +301,15 @@ store_urb_data(PURB urb, struct usbip_header *hdr)
 	case URB_FUNCTION_SYNC_RESET_PIPE_AND_CLEAR_STALL:
 		status = STATUS_SUCCESS;
 		break;
+<<<<<<< HEAD
 	case URB_FUNCTION_CONTROL_TRANSFER:
 		status = store_urb_control_transfer(urb, hdr);
 		break;
 	case URB_FUNCTION_CONTROL_TRANSFER_EX:
 		status = store_urb_control_transfer_ex(urb, hdr);
 		break;
+=======
+>>>>>>> 781e315... return stall pid to host and forward reset_pipe_request to device
 	default:
 		DBGE(DBG_WRITE, "not supported func: %s\n", dbg_urbfunc(urb->UrbHeader.Function));
 		status = STATUS_INVALID_PARAMETER;
@@ -336,7 +339,10 @@ process_urb_res_submit(pusbip_vpdo_dev_t vpdo, PURB urb, struct usbip_header *hd
 		if (urb->UrbHeader.Function == URB_FUNCTION_BULK_OR_INTERRUPT_TRANSFER) {
 			urb->UrbBulkOrInterruptTransfer.TransferBufferLength = hdr->u.ret_submit.actual_length;
 		}
+<<<<<<< HEAD
 		DBGW(DBG_WRITE, "%s: wrong status: %s\n", dbg_urbfunc(urb->UrbHeader.Function), dbg_usbd_status(urb->UrbHeader.Status));
+=======
+>>>>>>> 781e315... return stall pid to host and forward reset_pipe_request to device
 		return STATUS_UNSUCCESSFUL;
 	}
 

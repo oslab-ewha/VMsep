@@ -88,6 +88,7 @@ store_urb_reset_dev(PIRP irp, struct urb_req *urbr)
 }
 
 static NTSTATUS
+<<<<<<< HEAD
 store_urb_dsc_req(PIRP irp, struct urb_req *urbr)
 {
 	struct usbip_header *hdr;
@@ -124,6 +125,10 @@ store_urb_reset_pipe(PIRP irp, PURB urb, struct urb_req *urbr)
 	/* 1. We clear STALL/HALT feature on endpoint specified by pipe
 	 * 2. We abort/cancel all IRP for given pipe
 	 */
+=======
+store_urb_reset_pipe(PIRP irp, PURB urb, struct urb_req *urbr)
+{
+>>>>>>> 781e315... return stall pid to host and forward reset_pipe_request to device
 	struct _URB_PIPE_REQUEST	*urb_rp = &urb->UrbPipeRequest;
 	struct usbip_header	*hdr;
 	int	in, type;
@@ -135,6 +140,7 @@ store_urb_reset_pipe(PIRP irp, PURB urb, struct urb_req *urbr)
 
 	in = PIPE2DIRECT(urb_rp->PipeHandle);
 	type = PIPE2TYPE(urb_rp->PipeHandle);
+<<<<<<< HEAD
 	if (type == USB_ENDPOINT_TYPE_CONTROL) {
 		DBGW(DBG_READ, "CLEAR not allowed to a control pipe\n");
 		return STATUS_INVALID_PARAMETER;
@@ -155,6 +161,21 @@ store_urb_reset_pipe(PIRP irp, PURB urb, struct urb_req *urbr)
 	// cancel/abort all URBs for given pipe
 	vhci_ioctl_abort_pipe(urbr->vpdo, urb_rp->PipeHandle);
 
+=======
+	if (type != USB_ENDPOINT_TYPE_BULK && type != USB_ENDPOINT_TYPE_INTERRUPT) {
+		DBGE(DBG_READ, "Error, not a bulk pipe\n");
+		return STATUS_INVALID_PARAMETER;
+	}
+
+	set_cmd_submit_usbip_header(hdr, urbr->seq_num, urbr->vpdo->devid, in, urb_rp->PipeHandle, 0, 0);
+	RtlZeroMemory(hdr->u.cmd_submit.setup, 8);
+
+	usb_cspkt_t *csp = (usb_cspkt_t *)hdr->u.cmd_submit.setup;
+	build_setup_packet(csp, 0, BMREQUEST_STANDARD, BMREQUEST_TO_ENDPOINT, USB_REQUEST_RESET_PIPE);
+
+	irp->IoStatus.Information = sizeof(struct usbip_header);
+
+>>>>>>> 781e315... return stall pid to host and forward reset_pipe_request to device
 	return STATUS_SUCCESS;
 }
 
@@ -810,12 +831,15 @@ store_urbr_submit(PIRP irp, struct urb_req *urbr)
 	case URB_FUNCTION_SYNC_RESET_PIPE_AND_CLEAR_STALL:
 		status = store_urb_reset_pipe(irp, urb, urbr);
 		break;
+<<<<<<< HEAD
 	case URB_FUNCTION_CONTROL_TRANSFER:
 		status = store_urb_control_transfer(irp, urb, urbr);
 		break;
 	case URB_FUNCTION_CONTROL_TRANSFER_EX:
 		status = store_urb_control_transfer_ex(irp, urb, urbr);
 		break;
+=======
+>>>>>>> 781e315... return stall pid to host and forward reset_pipe_request to device
 	default:
 		irp->IoStatus.Information = 0;
 		DBGE(DBG_READ, "unhandled urb function: %s\n", dbg_urbfunc(code_func));

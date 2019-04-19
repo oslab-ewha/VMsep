@@ -6,6 +6,11 @@
 #include "stub_usbd.h"
 #include "devconf.h"
 
+<<<<<<< HEAD
+=======
+PUSB_CONFIGURATION_DESCRIPTOR get_usb_dsc_conf(usbip_stub_dev_t *devstub, UCHAR bVal);
+
+>>>>>>> 781e315... return stall pid to host and forward reset_pipe_request to device
 #ifdef DBG
 
 #include "strutil.h"

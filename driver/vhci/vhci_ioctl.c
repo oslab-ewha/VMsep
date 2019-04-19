@@ -38,16 +38,6 @@ extern PAGEABLE NTSTATUS
 vhci_eject_device(PUSBIP_VHCI_EJECT_HARDWARE Eject, pusbip_vhub_dev_t vhub);
 
 static NTSTATUS
-process_urb_reset_pipe(pusbip_vpdo_dev_t vpdo)
-{
-	UNREFERENCED_PARAMETER(vpdo);
-
-	////TODO need to check
-	DBGI(DBG_IOCTL, "reset_pipe:\n");
-	return STATUS_SUCCESS;
-}
-
-static NTSTATUS
 process_urb_abort_pipe(pusbip_vpdo_dev_t vpdo, PURB urb)
 {
 	UNREFERENCED_PARAMETER(vpdo);
@@ -94,8 +84,6 @@ process_irp_urb_req(pusbip_vpdo_dev_t vpdo, PIRP irp, PURB urb)
 	DBGI(DBG_IOCTL, "process_irp_urb_req: function: %s\n", dbg_urbfunc(urb->UrbHeader.Function));
 
 	switch (urb->UrbHeader.Function) {
-	case URB_FUNCTION_RESET_PIPE:
-		return process_urb_reset_pipe(vpdo);
 	case URB_FUNCTION_ABORT_PIPE:
 		return process_urb_abort_pipe(vpdo, urb);
 	case URB_FUNCTION_GET_CURRENT_FRAME_NUMBER:
@@ -114,6 +102,7 @@ process_irp_urb_req(pusbip_vpdo_dev_t vpdo, PIRP irp, PURB urb)
 	case URB_FUNCTION_GET_DESCRIPTOR_FROM_DEVICE:
 	case URB_FUNCTION_BULK_OR_INTERRUPT_TRANSFER:
 	case URB_FUNCTION_SELECT_INTERFACE:
+	case URB_FUNCTION_SYNC_RESET_PIPE_AND_CLEAR_STALL:
 		return submit_urbr_irp(vpdo, irp);
 	default:
 		DBGW(DBG_IOCTL, "process_irp_urb_req: unhandled function: %s: len: %d\n",
