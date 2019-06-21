@@ -23,6 +23,7 @@
 
 ### Build Tools
 <<<<<<< HEAD
+<<<<<<< HEAD
 - Visual Studio 2019 Community(v142)
   - Build with VS 2017(v141) is also possible if platform toolset in setting is configured to v141
 - Windows SDK 10.0.18362.0(recommended)
@@ -38,6 +39,11 @@
 - Visual Studio 2017 Community
 - Windows SDK 10.0.17134
 - Windows Driver Kit 10.0.17134
+=======
+- Visual Studio 2019 Community
+- Windows SDK 10.0.18362.0
+- Windows Driver Kit Windows 10, version 1903
+>>>>>>> fc79b7b... Update toolset to v142
 
 ### Build Process
 - Open usbip_win.sln

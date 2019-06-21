@@ -218,10 +218,13 @@
     <DriverSign>
       <FileDigestAlgorithm>sha256</FileDigestAlgorithm>
     </DriverSign>
+<<<<<<< HEAD
     <PostBuildEvent>
       <Command>gencat.bat $(OutDir) 10_$(DDKPlatform) $(SolutionDir)/driver/usbip_test.pfx
 </Command>
     </PostBuildEvent>
+=======
+>>>>>>> fc79b7b... Update toolset to v142
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -242,10 +245,13 @@
     <DriverSign>
       <FileDigestAlgorithm>sha256</FileDigestAlgorithm>
     </DriverSign>
+<<<<<<< HEAD
     <PostBuildEvent>
       <Command>gencat.bat $(OutDir) 10_$(DDKPlatform) $(SolutionDir)/driver/usbip_test.pfx
 </Command>
     </PostBuildEvent>
+=======
+>>>>>>> fc79b7b... Update toolset to v142
   </ItemDefinitionGroup>
   <ItemGroup>
     <FilesToPackage Include="$(TargetPath)" />

@@ -111,16 +111,32 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <TargetVersion>Windows10</TargetVersion>
     <UseDebugLibraries>true</UseDebugLibraries>
+<<<<<<< HEAD:driver/vhci_ude/usbip_vhci_ude.vcxproj
     <UdeDriver>true</UdeDriver>
     <UDE_VERSION_MAJOR>1</UDE_VERSION_MAJOR>
     <UDE_VERSION_MINOR>0</UDE_VERSION_MINOR>
+=======
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <ConfigurationType>Driver</ConfigurationType>
+    <DriverType>KMDF</DriverType>
+    <DriverTargetPlatform>Desktop</DriverTargetPlatform>
+    <SpectreMitigation>false</SpectreMitigation>
+>>>>>>> fc79b7b... Update toolset to v142:driver/stub/usbip_stub.vcxproj
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <TargetVersion>Windows10</TargetVersion>
     <UseDebugLibraries>false</UseDebugLibraries>
+<<<<<<< HEAD:driver/vhci_ude/usbip_vhci_ude.vcxproj
     <UdeDriver>true</UdeDriver>
     <UDE_VERSION_MAJOR>1</UDE_VERSION_MAJOR>
     <UDE_VERSION_MINOR>0</UDE_VERSION_MINOR>
+=======
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <ConfigurationType>Driver</ConfigurationType>
+    <DriverType>KMDF</DriverType>
+    <DriverTargetPlatform>Desktop</DriverTargetPlatform>
+    <SpectreMitigation>false</SpectreMitigation>
+>>>>>>> fc79b7b... Update toolset to v142:driver/stub/usbip_stub.vcxproj
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -222,6 +238,9 @@
     <Inf>
       <TimeStamp>0.5.0.0</TimeStamp>
     </Inf>
+    <DriverSign>
+      <FileDigestAlgorithm>sha256</FileDigestAlgorithm>
+    </DriverSign>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -242,6 +261,9 @@
     <Inf>
       <TimeStamp>0.5.0.0</TimeStamp>
     </Inf>
+    <DriverSign>
+      <FileDigestAlgorithm>sha256</FileDigestAlgorithm>
+    </DriverSign>
   </ItemDefinitionGroup>
   <ItemGroup>
     <FilesToPackage Include="$(TargetPath)" />
