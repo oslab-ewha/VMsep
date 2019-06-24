@@ -249,8 +249,12 @@
       <WppScanConfigurationData Condition="'%(ClCompile.ScanConfigurationData)' == ''">vhci_trace.h</WppScanConfigurationData>
       <WppKernelMode>true</WppKernelMode>
       <AdditionalIncludeDirectories>..\..\include;..\lib;$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+<<<<<<< HEAD:driver/vhci_ude/usbip_vhci_ude.vcxproj
       <WppPreprocessorDefinitions>%(WppPreprocessorDefinitions)</WppPreprocessorDefinitions>
       <WppAdditionalConfigurationFile>custom_wpp.ini</WppAdditionalConfigurationFile>
+=======
+      <TreatWarningAsError>false</TreatWarningAsError>
+>>>>>>> 85ebeaa... fix: cannot build for x64-release:driver/stub/usbip_stub.vcxproj
     </ClCompile>
     <Link>
       <AdditionalDependencies>%(AdditionalDependencies);ntstrsafe.lib</AdditionalDependencies>

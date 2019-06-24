@@ -155,13 +155,20 @@
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
       <AdditionalIncludeDirectories>..\..\..\include; ..\..\lib; windows</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>HAVE_CONFIG_H</PreprocessorDefinitions>
+<<<<<<< HEAD
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+=======
+>>>>>>> 85ebeaa... fix: cannot build for x64-release
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+<<<<<<< HEAD
       <AdditionalDependencies>shlwapi.lib;setupapi.lib;advapi32.lib;ws2_32.lib;wintrust.lib;crypt32.lib;newdev.lib</AdditionalDependencies>
+=======
+      <AdditionalDependencies>setupapi.lib;advapi32.lib;ws2_32.lib;wintrust.lib;crypt32.lib;newdev.lib</AdditionalDependencies>
+>>>>>>> 85ebeaa... fix: cannot build for x64-release
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

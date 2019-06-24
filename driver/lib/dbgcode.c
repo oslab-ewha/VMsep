@@ -3,7 +3,10 @@
 #ifdef DBG
 
 #include <ntstrsafe.h>
+<<<<<<< HEAD
 #include "strutil.h"
+=======
+>>>>>>> 85ebeaa... fix: cannot build for x64-release
 
 static namecode_t namecodes_ntstatus[] = {
 	K_V(STATUS_SUCCESS)
