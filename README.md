@@ -25,6 +25,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 - Visual Studio 2019 Community(v142)
   - Build with VS 2017(v141) is also possible if platform toolset in setting is configured to v141
 - Windows SDK 10.0.18362.0(recommended)
@@ -50,6 +51,8 @@
 - Open usbip_win.sln
 >>>>>>> 80733de... Add some notes about the build and test environment
 =======
+=======
+>>>>>>> a173c29... Replace a fixed SDK version to support various build environments
 - Visual Studio 2019 Community(v142)
   - Build with VS 2017(v141) is also possible if platform toolset in setting is configured to v141
 - Windows SDK 10.0.18362.0(recommended)
@@ -61,6 +64,9 @@
 ### Build Process
 - Open usbip_win.sln
 - If VS 2017 is used, SDK version for userspace projects(usbip, usbip_common, usbipd, stubctl) should be adjusted.
+<<<<<<< HEAD
+>>>>>>> a173c29... Replace a fixed SDK version to support various build environments
+=======
 >>>>>>> a173c29... Replace a fixed SDK version to support various build environments
 - Set certificate driver signing for usbip\_stub and usbip\_vhci projects.
   - Right-click on the project > Properties > Driver Signing > Test Certificate

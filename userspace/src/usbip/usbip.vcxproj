@@ -23,10 +23,14 @@
     <RootNamespace>usbip</RootNamespace>
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     <WindowsTargetPlatformVersion>$(LatestTargetPlatformVersion)</WindowsTargetPlatformVersion>
 =======
     <WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>
 >>>>>>> fc79b7b... Update toolset to v142
+=======
+    <WindowsTargetPlatformVersion>$(LatestTargetPlatformVersion)</WindowsTargetPlatformVersion>
+>>>>>>> a173c29... Replace a fixed SDK version to support various build environments
 =======
     <WindowsTargetPlatformVersion>$(LatestTargetPlatformVersion)</WindowsTargetPlatformVersion>
 >>>>>>> a173c29... Replace a fixed SDK version to support various build environments
