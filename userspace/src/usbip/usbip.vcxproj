@@ -22,10 +22,14 @@
     <ProjectGuid>{36CEE68D-D6CF-4413-978C-794488F44555}</ProjectGuid>
     <RootNamespace>usbip</RootNamespace>
 <<<<<<< HEAD
+<<<<<<< HEAD
     <WindowsTargetPlatformVersion>$(LatestTargetPlatformVersion)</WindowsTargetPlatformVersion>
 =======
     <WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>
 >>>>>>> fc79b7b... Update toolset to v142
+=======
+    <WindowsTargetPlatformVersion>$(LatestTargetPlatformVersion)</WindowsTargetPlatformVersion>
+>>>>>>> a173c29... Replace a fixed SDK version to support various build environments
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
