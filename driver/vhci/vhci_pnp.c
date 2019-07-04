@@ -87,7 +87,9 @@ vhci_add_device(__in PDRIVER_OBJECT drvobj, __in PDEVICE_OBJECT devobj_lower)
 	PDEVICE_OBJECT		devobj;
 	pusbip_vhub_dev_t	vhub = NULL;
 	PWCHAR		deviceName = NULL;
+#if DBG
 	ULONG		nameLength;
+#endif
 	NTSTATUS	status;
 
 	PAGED_CODE();

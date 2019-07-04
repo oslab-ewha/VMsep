@@ -250,11 +250,15 @@
       <WppKernelMode>true</WppKernelMode>
       <AdditionalIncludeDirectories>..\..\include;..\lib;$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
 <<<<<<< HEAD:driver/vhci_ude/usbip_vhci_ude.vcxproj
+<<<<<<< HEAD:driver/vhci_ude/usbip_vhci_ude.vcxproj
       <WppPreprocessorDefinitions>%(WppPreprocessorDefinitions)</WppPreprocessorDefinitions>
       <WppAdditionalConfigurationFile>custom_wpp.ini</WppAdditionalConfigurationFile>
 =======
       <TreatWarningAsError>false</TreatWarningAsError>
 >>>>>>> 85ebeaa... fix: cannot build for x64-release:driver/stub/usbip_stub.vcxproj
+=======
+      <TreatWarningAsError>true</TreatWarningAsError>
+>>>>>>> 4b2d7ce... remove all compilation warnings for release configuration:driver/stub/usbip_stub.vcxproj
     </ClCompile>
     <Link>
       <AdditionalDependencies>%(AdditionalDependencies);ntstrsafe.lib</AdditionalDependencies>

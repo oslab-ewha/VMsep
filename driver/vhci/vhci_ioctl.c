@@ -50,12 +50,11 @@ process_urb_reset_pipe(pusbip_vpdo_dev_t vpdo)
 static NTSTATUS
 process_urb_abort_pipe(pusbip_vpdo_dev_t vpdo, PURB urb)
 {
-	struct _URB_PIPE_REQUEST	*urb_pipe = &urb->UrbPipeRequest;
-
 	UNREFERENCED_PARAMETER(vpdo);
+	UNREFERENCED_PARAMETER(urb);
 
 	////TODO need to check
-	DBGI(DBG_IOCTL, "abort_pipe: %x\n", urb_pipe->PipeHandle);
+	DBGI(DBG_IOCTL, "abort_pipe: %x\n", urb->UrbPipeRequest.PipeHandle);
 	return STATUS_SUCCESS;
 }
 

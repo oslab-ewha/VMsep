@@ -363,7 +363,13 @@ vhci_QueryWmiDataBlock(__in PDEVICE_OBJECT devobj, __in PIRP Irp, __in ULONG Gui
 	ULONG		size = 0;
 	NTSTATUS	status;
 
+<<<<<<< HEAD
 >>>>>>> 48e1018... Beautify VHCI driver code
+=======
+	UNREFERENCED_PARAMETER(InstanceIndex);
+	UNREFERENCED_PARAMETER(InstanceCount);
+
+>>>>>>> 4b2d7ce... remove all compilation warnings for release configuration
 	PAGED_CODE();
 
 	// Only ever registers 1 instance per guid

@@ -238,8 +238,12 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
 =======
       <AdditionalIncludeDirectories>..\..\include;..\lib;$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+<<<<<<< HEAD
       <TreatWarningAsError>false</TreatWarningAsError>
 >>>>>>> 85ebeaa... fix: cannot build for x64-release
+=======
+      <TreatWarningAsError>true</TreatWarningAsError>
+>>>>>>> 4b2d7ce... remove all compilation warnings for release configuration
     </ClCompile>
     <Link>
       <AdditionalDependencies>$(DDK_LIB_PATH)wdmsec.lib;$(DDK_LIB_PATH)ntstrsafe.lib;usbd.lib;%(AdditionalDependencies)</AdditionalDependencies>
