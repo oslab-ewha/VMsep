@@ -371,7 +371,7 @@ setup_vpdo_hw_ids(pusbip_vpdo_dev_t vpdo, PIRP irp)
 	if (ids_hw == NULL) {
 		return STATUS_INSUFFICIENT_RESOURCES;
 	}
-	RtlStringCchPrintfW(ids_hw, 31, L"USB\\VID_%04hx&PID_%04hx&Rev_%04hx", vpdo->vendor, vpdo->product, vpdo->revision);
+	RtlStringCchPrintfW(ids_hw, 31, L"USB\\VID_%04hx&PID_%04hx&REV_%04hx", vpdo->vendor, vpdo->product, vpdo->revision);
 	RtlStringCchPrintfW(ids_hw + 31, 22, L"USB\\VID_%04hx&PID_%04hx", vpdo->vendor, vpdo->product);
 	ids_hw[53] = L'\0';
 	irp->IoStatus.Information = (ULONG_PTR)ids_hw;
