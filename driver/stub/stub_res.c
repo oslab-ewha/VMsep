@@ -15,7 +15,11 @@ dbg_stub_res(stub_res_t *sres, usbip_stub_dev_t *devstub)
 	static char	buf[1024];
 
 	if (sres == devstub->sres_ongoing) {
+<<<<<<< HEAD
 		libdrv_snprintf(buf, 1024, "%s", dbg_usbip_hdr(&sres->header));
+=======
+		dbg_snprintf(buf, 1024, "%s", dbg_usbip_hdr(&sres->header));
+>>>>>>> 56e75cd... Revive stub driver (#45)
 	}
 	else {
 		libdrv_snprintf(buf, 1024, "seq:%u,data_len:%d", sres->header.base.seqnum, sres->data_len);
