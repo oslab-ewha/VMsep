@@ -306,5 +306,38 @@ Windows Registry Editor Version 5.00
   - usbip.exe attach -r &lt;usbip server ip&gt; -b 2-2
 >>>>>>> 1093a90... Fix typos, uniformize "USB/IP", clarify some details.
 
+### Reporting Bug
+- usbip-win is not yet ready for production use. We could find problems with more detailed logs.
+
+#### How to get windows kernel log
+- Set registry key to enable a debug filter
+  - usbip-win uses [DbgPrintEx API for kernel logging](https://docs.microsoft.com/en-us/windows-hardware/drivers/devtest/reading-and-filtering-debugging-messages).
+  - save following as .reg and run or manually insert a registry key
+  - restart is required
+```
+Windows Registry Editor Version 5.00
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Debug Print Filter]
+"IHVDRIVER"=dword:ffffffff
+```
+- Run a debugging log viewer program before you test
+  - [DebugView](https://docs.microsoft.com/en-us/sysinternals/downloads/debugview) is a good tool to view the logs
+  
+- If your testing machine suffer from BSOD(blue screen on death), you should get it via remote debugging.
+  - WinDbg on virtual machines would be good to get logs
+
+#### How to get usbip forwarder log
+- usbip-win transmits usbip packets via a userland forwarder.
+  - forwarder log is the best to look into usbip packet internals. 
+- edit usbip_forward.c to define DEBUG_PDU at the head of the file
+- compile usbip.exe or usbipd.exe
+- debug_pdu.log is created at the path where an executable runs.  
+
+#### How to get linux kernel log
+- Sometimes linux kernel log is required
+```
+# dmesg --follow | tee kernel_log.txt
+```
+
 <hr>
 <sub>This project was supported by Basic Science Research Program through the National Research Foundation of Korea(NRF) funded by the Ministry of Education(2016R1A6A3A11930295).</sub>
