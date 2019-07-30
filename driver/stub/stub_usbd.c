@@ -174,24 +174,24 @@ get_usb_device_desc(usbip_stub_dev_t* devstub, PUSB_DEVICE_DESCRIPTOR pdesc)
 	return get_usb_desc(devstub, USB_DEVICE_DESCRIPTOR_TYPE, 0, 0, pdesc, &len);
 }
 
-static BOOLEAN
+static INT
 find_usb_dsc_conf(usbip_stub_dev_t *devstub, UCHAR bVal, PUSB_CONFIGURATION_DESCRIPTOR dsc_conf)
 {
 	USB_DEVICE_DESCRIPTOR	DevDesc;
 	UCHAR		i;
 
 	if (!get_usb_device_desc(devstub, &DevDesc)) {
-		return FALSE;
+		return -1;
 	}
 
 	for (i = 0; i < DevDesc.bNumConfigurations; i++) {
 		ULONG	len = sizeof(USB_CONFIGURATION_DESCRIPTOR);
 		if (get_usb_desc(devstub, USB_CONFIGURATION_DESCRIPTOR_TYPE, i, 0, dsc_conf, &len)) {
 			if (dsc_conf->bConfigurationValue == bVal)
-				return TRUE;
+				return i;
 		}
 	}
-	return FALSE;
+	return -1;
 }
 
 PUSB_CONFIGURATION_DESCRIPTOR
@@ -200,8 +200,10 @@ get_usb_dsc_conf(usbip_stub_dev_t *devstub, UCHAR bVal)
 	USB_CONFIGURATION_DESCRIPTOR	ConfDesc;
 	PUSB_CONFIGURATION_DESCRIPTOR	dsc_conf;
 	ULONG	len;
-
-	if (!find_usb_dsc_conf(devstub, bVal, &ConfDesc))
+	INT   iConfiguration;
+	
+	iConfiguration = find_usb_dsc_conf(devstub, bVal, &ConfDesc);
+	if (iConfiguration == -1)
 		return NULL;
 
 	dsc_conf = ExAllocatePoolWithTag(NonPagedPool, ConfDesc.wTotalLength, USBIP_STUB_POOL_TAG);
@@ -209,7 +211,7 @@ get_usb_dsc_conf(usbip_stub_dev_t *devstub, UCHAR bVal)
 		return NULL;
 
 	len = ConfDesc.wTotalLength;
-	if (!get_usb_desc(devstub, USB_CONFIGURATION_DESCRIPTOR_TYPE, ConfDesc.iConfiguration, 0, dsc_conf, &len)) {
+	if (!get_usb_desc(devstub, USB_CONFIGURATION_DESCRIPTOR_TYPE, (UCHAR)iConfiguration, 0, dsc_conf, &len)) {
 		ExFreePoolWithTag(dsc_conf, USBIP_STUB_POOL_TAG);
 		return NULL;
 	}
@@ -225,6 +227,9 @@ build_default_intf_list(PUSB_CONFIGURATION_DESCRIPTOR dsc_conf)
 
 	size = sizeof(USBD_INTERFACE_LIST_ENTRY) * (dsc_conf->bNumInterfaces + 1);
 	pintf_list = ExAllocatePoolWithTag(NonPagedPool, size, USBIP_STUB_POOL_TAG);
+	if (pintf_list == NULL)
+		return NULL;
+
 	RtlZeroMemory(pintf_list, size);
 
 	for (i = 0; i < dsc_conf->bNumInterfaces; i++) {
@@ -244,7 +249,8 @@ select_usb_conf(usbip_stub_dev_t *devstub, USHORT bVal)
 	PURB		purb;
 	PUSBD_INTERFACE_LIST_ENTRY	pintf_list;
 	NTSTATUS	status;
-
+	struct _URB_SELECT_CONFIGURATION	*purb_selc;
+	
 	dsc_conf = get_usb_dsc_conf(devstub, (UCHAR)bVal);
 	if (dsc_conf == NULL) {
 		DBGE(DBG_GENERAL, "select_usb_conf: non-existent configuration descriptor: index: %hu\n", bVal);
@@ -252,33 +258,39 @@ select_usb_conf(usbip_stub_dev_t *devstub, USHORT bVal)
 	}
 
 	pintf_list = build_default_intf_list(dsc_conf);
+	if (pintf_list == NULL) {
+		DBGE(DBG_GENERAL, "select_usb_conf: out of memory: pintf_list\n");
+		ExFreePoolWithTag(dsc_conf, USBIP_STUB_POOL_TAG);
+		return FALSE;
+	}
 
 	status = USBD_SelectConfigUrbAllocateAndBuild(devstub->hUSBD, dsc_conf, pintf_list, &purb);
 	if (NT_ERROR(status)) {
 		DBGE(DBG_GENERAL, "select_usb_conf: failed to selectConfigUrb: %s\n", dbg_ntstatus(status));
 		ExFreePoolWithTag(pintf_list, USBIP_STUB_POOL_TAG);
+		ExFreePoolWithTag(dsc_conf, USBIP_STUB_POOL_TAG);
 		return FALSE;
 	}
 
 	status = call_usbd(devstub, purb);
-	if (NT_SUCCESS(status)) {
-		struct _URB_SELECT_CONFIGURATION	*purb_selc = &purb->UrbSelectConfiguration;
-
-		if (devstub->devconf)
-			free_devconf(devstub->devconf);
-		devstub->devconf = create_devconf(purb_selc->ConfigurationDescriptor, purb_selc->ConfigurationHandle, &purb_selc->Interface);
+	if (NT_ERROR(status)) {
+		DBGI(DBG_GENERAL, "select_usb_conf: failed to select configuration: %s\n", dbg_devstub(devstub));
 		USBD_UrbFree(devstub->hUSBD, purb);
 		ExFreePoolWithTag(pintf_list, USBIP_STUB_POOL_TAG);
 		ExFreePoolWithTag(dsc_conf, USBIP_STUB_POOL_TAG);
-		return TRUE;
+		return FALSE;
 	}
-	else {
-		DBGI(DBG_GENERAL, "select_usb_conf: failed to select configuration: %s\n", dbg_devstub(devstub));
+
+	purb_selc = &purb->UrbSelectConfiguration;
+
+	if (devstub->devconf) {
+		free_devconf(devstub->devconf);
 	}
+	devstub->devconf = create_devconf(purb_selc->ConfigurationDescriptor, purb_selc->ConfigurationHandle, &purb_selc->Interface);
 	USBD_UrbFree(devstub->hUSBD, purb);
 	ExFreePoolWithTag(pintf_list, USBIP_STUB_POOL_TAG);
 	ExFreePoolWithTag(dsc_conf, USBIP_STUB_POOL_TAG);
-	return FALSE;
+	return TRUE;
 }
 
 BOOLEAN

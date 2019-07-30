@@ -7,10 +7,13 @@
 #include "devconf.h"
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 PUSB_CONFIGURATION_DESCRIPTOR get_usb_dsc_conf(usbip_stub_dev_t *devstub, UCHAR bVal);
 
 >>>>>>> 781e315... return stall pid to host and forward reset_pipe_request to device
+=======
+>>>>>>> 5f068a7... Some bugfixes to get devices with multiple configurations to function correctly
 #ifdef DBG
 
 #include "strutil.h"
@@ -64,7 +67,11 @@ build_infos_intf(devconf_t *devconf, PUSBD_INTERFACE_LIST_ENTRY pintf_list)
 	unsigned	i;
 
 	for (i = 0; i < devconf->bNumInterfaces; i++) {
+<<<<<<< HEAD
 		PUSBD_INTERFACE_INFORMATION	info_intf_copied = dup_info_intf(pintf_list[i].Interface);
+=======
+		PUSBD_INTERFACE_INFORMATION	info_intf_copied = dup_info_intf(&infos_intf[i]);
+>>>>>>> 5f068a7... Some bugfixes to get devices with multiple configurations to function correctly
 		if (info_intf_copied == NULL) {
 			DBGE(DBG_GENERAL, "build_infos_intf: out of memory\n");
 			return FALSE;
