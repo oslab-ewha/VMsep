@@ -68,10 +68,14 @@ build_infos_intf(devconf_t *devconf, PUSBD_INTERFACE_LIST_ENTRY pintf_list)
 
 	for (i = 0; i < devconf->bNumInterfaces; i++) {
 <<<<<<< HEAD
+<<<<<<< HEAD
 		PUSBD_INTERFACE_INFORMATION	info_intf_copied = dup_info_intf(pintf_list[i].Interface);
 =======
 		PUSBD_INTERFACE_INFORMATION	info_intf_copied = dup_info_intf(&infos_intf[i]);
 >>>>>>> 5f068a7... Some bugfixes to get devices with multiple configurations to function correctly
+=======
+		PUSBD_INTERFACE_INFORMATION	info_intf_copied = dup_info_intf(pintf_list[i].Interface);
+>>>>>>> 35b0c11... Using pintf_list instead of purb_selc->Interface as the source for building the interface list.
 		if (info_intf_copied == NULL) {
 			DBGE(DBG_GENERAL, "build_infos_intf: out of memory\n");
 			return FALSE;

@@ -286,7 +286,7 @@ select_usb_conf(usbip_stub_dev_t *devstub, USHORT bVal)
 	if (devstub->devconf) {
 		free_devconf(devstub->devconf);
 	}
-	devstub->devconf = create_devconf(purb_selc->ConfigurationDescriptor, purb_selc->ConfigurationHandle, &purb_selc->Interface);
+	devstub->devconf = create_devconf(purb_selc->ConfigurationDescriptor, purb_selc->ConfigurationHandle, pintf_list);
 	USBD_UrbFree(devstub->hUSBD, purb);
 	ExFreePoolWithTag(pintf_list, USBIP_STUB_POOL_TAG);
 	ExFreePoolWithTag(dsc_conf, USBIP_STUB_POOL_TAG);
