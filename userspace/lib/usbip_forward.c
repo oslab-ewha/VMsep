@@ -649,10 +649,15 @@ usbip_forward(HANDLE hdev_src, HANDLE hdev_dst, BOOL inbound)
 
 	/* Cancel an uncompleted asynchronous read */
 	/* If there's no asynchronous read pending, CancelIo seems to be blocked. */
-	if (buff_src.in_reading)
+	/* in_reading should be checked as cleared to guarantee that an IO completion routine has been called */
+	while (buff_src.in_reading) {
 		CancelIoEx(hdev_src, &buff_src.ovs[0]);
-	if (buff_dst.in_reading)
+		SleepEx(500, TRUE);
+	}
+	while (buff_dst.in_reading) {
 		CancelIoEx(hdev_dst, &buff_dst.ovs[0]);
+		SleepEx(500, TRUE);
+	}
 
 	cleanup_devbuf(&buff_src);
 	cleanup_devbuf(&buff_dst);
