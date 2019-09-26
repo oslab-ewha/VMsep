@@ -82,6 +82,7 @@ static NTSTATUS
 post_select_config(pusbip_vpdo_dev_t vpdo, PURB urb)
 >>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
 {
+<<<<<<< HEAD
 	struct _URB_CONTROL_DESCRIPTOR_REQUEST	*urb_cdr = &urb->UrbControlDescriptorRequest;
 	PUSB_COMMON_DESCRIPTOR	dsc;
 
@@ -91,6 +92,23 @@ post_select_config(pusbip_vpdo_dev_t vpdo, PURB urb)
 	if (dsc->bLength > urb_cdr->TransferBufferLength) {
 		DBGI(DBG_WRITE, "skip to cache partial descriptor: (%u < %hhu)\n", urb_cdr->TransferBufferLength, dsc->bLength);
 		return;
+=======
+	PUSB_CONFIGURATION_DESCRIPTOR	dsc_conf;
+	USHORT	len;
+	struct _URB_SELECT_CONFIGURATION	*urb_selc = &urb->UrbSelectConfiguration;
+
+	// If ConfigurationDescriptor is NULL, the device will be set to an unconfigured state.
+	if (urb_selc->ConfigurationDescriptor == NULL) {
+		DBGE(DBG_WRITE, "post_select_config: unconfigured state\n");
+		return STATUS_SUCCESS;
+	}
+
+	len = urb_selc->ConfigurationDescriptor->wTotalLength;
+	dsc_conf = ExAllocatePoolWithTag(NonPagedPool, len, USBIP_VHCI_POOL_TAG);
+	if (dsc_conf == NULL) {
+		DBGE(DBG_WRITE, "post_select_config: out of memory\n");
+		return STATUS_UNSUCCESSFUL;
+>>>>>>> d16d4be... fixes for bsod when attaching to Texas Instruments SmartRF04EB
 	}
 	try_to_cache_descriptor(vpdo, urb_cdr, dsc);
 }
