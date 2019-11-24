@@ -98,6 +98,7 @@
 - Prepare a linux machine as a USB/IP client
   - Tested on Ubuntu 16.04
   - Kernel 4.15.0-29 (USB/IP kernel module crash was observed on some other version)
+<<<<<<< HEAD
 >>>>>>> 1093a90... Fix typos, uniformize "USB/IP", clarify some details.
   - \# modprobe vhci-hcd
 
@@ -110,10 +111,23 @@
   - `> bcdedit.exe /set TESTSIGNING ON`
   - reboot the system to apply
 <<<<<<< HEAD
+=======
+  - `# modprobe vhci-hcd`
+
+- Install USB/IP test certificate
+  - Install `driver/usbip_test.pfx` (password: usbip)
+  - Certificate should be installed into
+    1. "Trusted Root Certification Authority" in "Local Computer" (not current user) and
+    2. "Trusted Publishers" in "Local Computer" (not current user)
+- Enable test signing
+  - `> bcdedit.exe /set TESTSIGNING ON`
+  - reboot the system to apply
+>>>>>>> 5bc7a8e... Update README.md for readability
 - Copy `usbip.exe`, `usbipd.exe`, `usb.ids`, `usbip_stub.sys`, `usbip_stub.inx` into a folder in target machine
   - You can find `usbip.exe`, `usbipd.exe`, `usbip_stub.sys` in output folder after build or on [release](https://github.com/cezanne/usbip-win/releases) page.
   - `userspace/usb.ids`
   - `driver/stub/usbip_stub.inx`
+<<<<<<< HEAD
 - Find USB device id
   - You can get device id from usbip listing
     - `> usbip.exe list -l`
@@ -251,60 +265,71 @@ Windows Registry Editor Version 5.00
   - You can find usbip.exe, usbipd.exe, usbip\_stub.sys in output folder.
   - userspace/usb.ids
   - driver/stub/usbip\_stub.inx
+=======
+>>>>>>> 5bc7a8e... Update README.md for readability
 - Find USB device id
   - You can get device id from usbip listing
-    - usbip.exe list -l
-  - Bus id is always 1. So output from usbip.exe listing is shown as:
-
-<pre><code>
-    usbip.exe list -l
-      - busid 1-59 (045e:00cb)
-        Microsoft Corp. : Basic Optical Mouse v2.0 (045e:00cb)
-      - busid 1-30 (80ee:0021)
-        VirtualBox : USB Tablet (80ee:0021)
-</code></pre>
-
+    - `> usbip.exe list -l`
+  - Bus id is always 1. So output from `usbip.exe` listing is shown as:
+```
+usbip.exe list -l
+ - busid 1-59 (045e:00cb)
+   Microsoft Corp. : Basic Optical Mouse v2.0 (045e:00cb)
+ - busid 1-30 (80ee:0021)
+   VirtualBox : USB Tablet (80ee:0021)
+```
 - Bind USB device to usbip stub
   - This command replaces an existing function driver with usbip stub driver
-	- This should be executed using administrator privilege
-	- usbip\_stub.inx and usbip\_stub.sys files should be in the same folder as usbip.exe
-  - usbip.exe bind -b 1-59
-- Run usbipd.exe
-  - usbipd.exe -d -4
-	- TCP port 3240 should be allowed by firewall
+    - This should be executed using administrator privilege
+    - `usbip_stub.inx` and `usbip_stub.sys` files should be in the same folder as `usbip.exe`
+  - `> usbip.exe bind -b 1-59`
+- Run `usbipd.exe`
+  - `> usbipd.exe -d -4`
+	- TCP port `3240` should be allowed by firewall
 
 - Attach USB/IP device on linux machine
+<<<<<<< HEAD
   - \# usbip attach -r &lt;usbip server ip&gt; -p 1-59
+=======
+  - `# usbip attach -r <usbip server ip> -b 1-59`
+>>>>>>> 5bc7a8e... Update README.md for readability
 
 ### Windows USB/IP client
 
 - Prepare a linux machine as a USB/IP server
-  - tested on Ubuntu 16.04(Kernerl 4.15.0-29)
-  - \# modprobe usbip-host
+  - tested on Ubuntu 16.04 (Kernerl 4.15.0-29)
+  - `# modprobe usbip-host`
 
-- Run usbipd on a USB/IP server(Linux)
-  - \# usbipd -4 -d
+- Run usbipd on a USB/IP server (Linux)
+  - `# usbipd -4 -d`
 
 - Install USB/IP test certificate
-  - Install driver/usbip\_test.pfx(password: usbip)
-  - Certificate should be installed into "Trusted Root Certification Authority" on local machine(not current user)
+  - Install `driver/usbip_test.pfx` (password: usbip)
+  - Certificate should be installed into
+    1. "Trusted Root Certification Authority" in "Local Computer" (not current user) and
+    2. "Trusted Publishers" in "Local Computer" (not current user)
 - Enable test signing
-  - bcdedit.exe /set TESTSIGNING ON
+  - `> bcdedit.exe /set TESTSIGNING ON`
   - reboot the system to apply
-- Copy usbip.exe, usbip\_vhci.sys, usbip\_vhci.inf, usbip\_vhci.cer, usbip\_vhci.cat into a folder in target machine
-  - You can find usbip.exe, usbip\_vhci.sys, usbip\_vhci.cer, usbip\_vhci.inf in output folder.
-  - usbip\_vhci.cat can be found from usbip\_vhci subfolder of output folder
-- Install USB/IP vhci driver
+- Copy `usbip.exe`, `usbip_vhci.sys`, `usbip_vhci.inf`, `usbip_vhci.cer`, `usbip_vhci.cat` into a folder in target machine
+  - You can find `usbip.exe`, `usbip_vhci.sys`, `usbip_vhci.cer`, `usbip_vhci.inf` in output folder after build or on [release](https://github.com/cezanne/usbip-win/releases) page.
+  - `usbip_vhci.cat` can be found from `usbip_vhci` subfolder of output folder.
+  - `usbip_vhci.cer` can be found in [0.0.1 release](https://github.com/cezanne/usbip-win/releases/tag/0.0.1) page.
+- Install USB/IP VHCI driver
   - Start Device manager
   - Choose "Add Legacy Hardware" from the "Action" menu.
-  - Select 'Install the hardware that I manually select from the list'.
-  - Click 'Next'.
-  - Click 'Have Disk', click 'Browse', choose the copied folder, and click OK.
-  - Click on the 'USB/IP VHCI, and then click Next.
-  - Click Finish at 'Completing the Add/Remove Hardware Wizard.'
+  - Select "Install the hardware that I manually select from the list".
+  - Click "Next".
+  - Click "Have Disk", click "Browse", choose the copied folder, and click "OK".
+  - Click on the "USB/IP VHCI", and then click "Next".
+  - Click Finish at "Completing the Add/Remove Hardware Wizard".
 - Attach a remote USB device
+<<<<<<< HEAD
   - usbip.exe attach -r &lt;usbip server ip&gt; -b 2-2
 >>>>>>> 1093a90... Fix typos, uniformize "USB/IP", clarify some details.
+=======
+  - `> usbip.exe attach -r <usbip server ip> -b 2-2`
+>>>>>>> 5bc7a8e... Update README.md for readability
 
 ### Reporting Bug
 - usbip-win is not yet ready for production use. We could find problems with more detailed logs.
@@ -323,15 +348,15 @@ Windows Registry Editor Version 5.00
 - Run a debugging log viewer program before you test
   - [DebugView](https://docs.microsoft.com/en-us/sysinternals/downloads/debugview) is a good tool to view the logs
   
-- If your testing machine suffer from BSOD(blue screen on death), you should get it via remote debugging.
+- If your testing machine suffer from BSOD (blue screen on death), you should get it via remote debugging.
   - WinDbg on virtual machines would be good to get logs
 
 #### How to get usbip forwarder log
 - usbip-win transmits usbip packets via a userland forwarder.
   - forwarder log is the best to look into usbip packet internals. 
-- edit usbip_forward.c to define DEBUG_PDU at the head of the file
-- compile usbip.exe or usbipd.exe
-- debug_pdu.log is created at the path where an executable runs.  
+- edit `usbip_forward.c` to define `DEBUG_PDU` at the head of the file
+- compile `usbip.exe` or `usbipd.exe`
+- `debug_pdu.log` is created at the path where an executable runs.  
 
 #### How to get linux kernel log
 - Sometimes linux kernel log is required
