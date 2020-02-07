@@ -177,7 +177,6 @@ static void
 remove_cancelled_urbr(pusbip_vpdo_dev_t vpdo, PIRP irp)
 {
 	struct urb_req	*urbr;
-	KIRQL	oldirql = irp->CancelIrql;
 
 	KeAcquireSpinLockAtDpcLevel(&vpdo->lock_urbr);
 
@@ -194,8 +193,12 @@ remove_cancelled_urbr(pusbip_vpdo_dev_t vpdo, PIRP irp)
 		DBGW(DBG_URB, "no matching urbr\n");
 	}
 
+<<<<<<< HEAD
 	KeReleaseSpinLock(&vpdo->lock_urbr, oldirql);
 >>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
+=======
+	KeReleaseSpinLockFromDpcLevel(&vpdo->lock_urbr);
+>>>>>>> 5530943... Bug fix for VHCI spin lock release
 
 <<<<<<< HEAD
 	DBGI(DBG_GENERAL, "cancelled urb destroyed: %s\n", dbg_urbr(urbr));
