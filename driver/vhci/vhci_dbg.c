@@ -114,6 +114,7 @@ struct namecode	namecodes_urb_func[] = {
 	K_V(URB_FUNCTION_SYNC_RESET_PIPE)
 	K_V(URB_FUNCTION_SYNC_CLEAR_STALL)
 	K_V(URB_FUNCTION_CONTROL_TRANSFER_EX)
+<<<<<<< HEAD
 	{0,0}
 };
 
@@ -128,6 +129,8 @@ struct namecode	namecodes_usb_user_req[] = {
 	K_V(USBUSER_GET_USB_DRIVER_VERSION)
 	K_V(USBUSER_GET_USB2_HW_VERSION)
 	K_V(USBUSER_USB_REFRESH_HCT_REG)
+=======
+>>>>>>> 4ebd9a9... Add friendly debugging messages for vhci
 	{0,0}
 };
 

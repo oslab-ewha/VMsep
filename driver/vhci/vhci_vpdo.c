@@ -240,6 +240,7 @@ vhci_QueryDeviceCaps_vpdo(pusbip_vpdo_dev_t vpdo, PIRP Irp)
 	// Set the capabilities.
 	//
 	if (deviceCapabilities->Version != 1 || deviceCapabilities->Size < sizeof(DEVICE_CAPABILITIES)) {
+		DBGW(DBG_PNP, "Invalid deviceCapabilities\n");
 		return STATUS_UNSUCCESSFUL;
 	}
 
@@ -805,6 +806,7 @@ vhci_pnp_vpdo(PDEVICE_OBJECT devobj, PIRP Irp, PIO_STACK_LOCATION IrpStack, pusb
 		status = IoRegisterDeviceInterface(devobj, &GUID_DEVINTERFACE_USB_DEVICE, NULL, &vpdo->usb_dev_interface);
 		if (status == STATUS_SUCCESS)
 			IoSetDeviceInterfaceState(&vpdo->usb_dev_interface, TRUE);
+		DBGI(DBG_GENERAL, "Device started: %s\n", dbg_ntstatus(status));
 		break;
 	case IRP_MN_STOP_DEVICE:
 		// Here we shut down the device and give up and unmap any resources

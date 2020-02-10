@@ -906,10 +906,15 @@ store_cancelled_urbr(PIRP irp, struct urb_req *urbr)
 	struct usbip_header	*hdr;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 	DBGI(DBG_READ, "store_cancelled_urbr: Enter\n");
 
 =======
 >>>>>>> 10d26c6... vhci, notify a usbip server of urb cancellation
+=======
+	DBGI(DBG_READ, "store_cancelled_urbr: Enter\n");
+
+>>>>>>> 4ebd9a9... Add friendly debugging messages for vhci
 	hdr = get_usbip_hdr_from_read_irp(irp);
 	if (hdr == NULL)
 		return STATUS_INVALID_PARAMETER;
@@ -993,10 +998,15 @@ process_read_irp(pusbip_vpdo_dev_t vpdo, PIRP read_irp)
 	NTSTATUS status;
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 	DBGI(DBG_GENERAL | DBG_READ, "process_read_irp: Enter\n");
 
 =======
 >>>>>>> ccbd1a0... vhci code cleanup: vhub/vpdo instead of fdo/pdo
+=======
+	DBGI(DBG_GENERAL | DBG_READ, "process_read_irp: Enter\n");
+
+>>>>>>> 4ebd9a9... Add friendly debugging messages for vhci
 	KeAcquireSpinLock(&vpdo->lock_urbr, &oldirql);
 	if (vpdo->pending_read_irp) {
 		KeReleaseSpinLock(&vpdo->lock_urbr, oldirql);

@@ -358,9 +358,13 @@ process_urb_res_submit(pusbip_vpdo_dev_t vpdo, PURB urb, struct usbip_header *hd
 			urb->UrbBulkOrInterruptTransfer.TransferBufferLength = hdr->u.ret_submit.actual_length;
 		}
 <<<<<<< HEAD
+<<<<<<< HEAD
 		DBGW(DBG_WRITE, "%s: wrong status: %s\n", dbg_urbfunc(urb->UrbHeader.Function), dbg_usbd_status(urb->UrbHeader.Status));
 =======
 >>>>>>> 781e315... return stall pid to host and forward reset_pipe_request to device
+=======
+		DBGW(DBG_WRITE, "%s: wrong status: %s\n", dbg_urbfunc(urb->UrbHeader.Function), dbg_usbd_status(urb->UrbHeader.Status));
+>>>>>>> 4ebd9a9... Add friendly debugging messages for vhci
 		return STATUS_UNSUCCESSFUL;
 	}
 
