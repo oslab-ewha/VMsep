@@ -74,10 +74,15 @@ typedef struct _ioctl_usbip_vhci_plugin
 
 	signed char	port;
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 	wchar_t		winstid[MAX_VHCI_INSTANCE_ID + 1];
 =======
 >>>>>>> 393ac6a... vhci, let a webcam with IAD be detected as COMPOSITE
+=======
+
+	wchar_t		winstid[MAX_VHCI_INSTANCE_ID + 1];
+>>>>>>> fdca9fb... Allow specifying a custom instance ID when attaching vhci devices
 } ioctl_usbip_vhci_plugin;
 
 typedef struct _vhci_pluginfo

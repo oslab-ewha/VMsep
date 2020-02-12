@@ -32,6 +32,7 @@
 #include "usbip_wudev.h"
 >>>>>>> 393ac6a... vhci, let a webcam with IAD be detected as COMPOSITE:userspace/src/usbip/usbip_attach.c
 
+<<<<<<< HEAD:userspace/src/usbip/usbip_attach_ude.c
 extern void usbip_attach_usage(void);
 
 static int
@@ -40,6 +41,21 @@ import_device(SOCKET sockfd, pvhci_pluginfo_t pluginfo, HANDLE *phdev)
 =======
 import_device(SOCKET sockfd, usbip_wudev_t *wudev, HANDLE *phdev)
 >>>>>>> 393ac6a... vhci, let a webcam with IAD be detected as COMPOSITE:userspace/src/usbip/usbip_attach.c
+=======
+static const char usbip_attach_usage_string[] =
+	"usbip attach <args>\n"
+	"    -r, --remote=<host>    The machine with exported USB devices\n"
+	"    -b, --busid=<busid>    Busid of the device on <host>\n"
+	"    -i, --instid=<instid>  (Optional) Serial number to use as instance ID\n";
+
+void usbip_attach_usage(void)
+{
+	printf("usage: %s", usbip_attach_usage_string);
+}
+
+static int
+import_device(SOCKET sockfd, usbip_wudev_t *wudev, const char *instid, HANDLE *phdev)
+>>>>>>> fdca9fb... Allow specifying a custom instance ID when attaching vhci devices:userspace/src/usbip/usbip_attach.c
 {
 	HANDLE hdev;
 	int rc;
@@ -61,12 +77,16 @@ import_device(SOCKET sockfd, usbip_wudev_t *wudev, HANDLE *phdev)
 	dbg("got free port %d", port);
 
 <<<<<<< HEAD:userspace/src/usbip/usbip_attach_ude.c
+<<<<<<< HEAD:userspace/src/usbip/usbip_attach_ude.c
 	pluginfo->port = port;
 
 	rc = usbip_vhci_attach_device_ude(hdev, pluginfo);
 =======
 	rc = usbip_vhci_attach_device(hdev, port, wudev);
 >>>>>>> 393ac6a... vhci, let a webcam with IAD be detected as COMPOSITE:userspace/src/usbip/usbip_attach.c
+=======
+	rc = usbip_vhci_attach_device(hdev, port, instid, wudev);
+>>>>>>> fdca9fb... Allow specifying a custom instance ID when attaching vhci devices:userspace/src/usbip/usbip_attach.c
 
 	if (rc < 0) {
 		err("import device");
@@ -79,6 +99,7 @@ import_device(SOCKET sockfd, usbip_wudev_t *wudev, HANDLE *phdev)
 	return port;
 }
 
+<<<<<<< HEAD:userspace/src/usbip/usbip_attach_ude.c
 static pvhci_pluginfo_t
 build_pluginfo(SOCKET sockfd, unsigned devid)
 {
@@ -114,6 +135,8 @@ build_pluginfo(SOCKET sockfd, unsigned devid)
 	return pluginfo;
 }
 
+=======
+>>>>>>> fdca9fb... Allow specifying a custom instance ID when attaching vhci devices:userspace/src/usbip/usbip_attach.c
 static int query_import_device(SOCKET sockfd, const char *busid, HANDLE *phdev, const char *instid)
 {
 	int rc;
@@ -185,8 +208,12 @@ static int query_import_device(SOCKET sockfd, const char *busid, HANDLE *phdev, 
 	get_wudev(sockfd, &wuDev, &reply.udev);
 
 	/* import a device */
+<<<<<<< HEAD:userspace/src/usbip/usbip_attach_ude.c
 	return import_device(sockfd, &wuDev, phdev);
 >>>>>>> 393ac6a... vhci, let a webcam with IAD be detected as COMPOSITE:userspace/src/usbip/usbip_attach.c
+=======
+	return import_device(sockfd, &wuDev, instid, phdev);
+>>>>>>> fdca9fb... Allow specifying a custom instance ID when attaching vhci devices:userspace/src/usbip/usbip_attach.c
 }
 
 static int

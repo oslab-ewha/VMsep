@@ -230,6 +230,9 @@ destroy_vpdo(pusbip_vpdo_dev_t vpdo)
 {
 	PAGED_CODE();
 
+	if (vpdo->winstid != NULL)
+		ExFreePoolWithTag(vpdo->winstid, USBIP_VHCI_POOL_TAG);
+
 	// VHCI does not queue any irps at this time so we have nothing to do.
 	// Free any resources.
 

@@ -106,6 +106,9 @@ typedef struct
 	// unique port number of the device on the bus
 	ULONG	port;
 
+	// custom instance id. If NULL, port number will be used.
+	PWCHAR	winstid;
+
 	// Link point to hold all the vpdos for a single bus together
 	LIST_ENTRY	Link;
 

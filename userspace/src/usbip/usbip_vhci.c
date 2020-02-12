@@ -105,10 +105,14 @@ usbip_vhci_get_free_port(HANDLE hdev)
 
 int
 <<<<<<< HEAD
+<<<<<<< HEAD
 usbip_vhci_attach_device(HANDLE hdev, int port, const char *instid, usbip_wudev_t *wudev)
 =======
 usbip_vhci_attach_device(HANDLE hdev, int port, usbip_wudev_t *wudev)
 >>>>>>> 393ac6a... vhci, let a webcam with IAD be detected as COMPOSITE
+=======
+usbip_vhci_attach_device(HANDLE hdev, int port, const char *instid, usbip_wudev_t *wudev)
+>>>>>>> fdca9fb... Allow specifying a custom instance ID when attaching vhci devices
 {
 	ioctl_usbip_vhci_plugin  plugin;
 	unsigned long	unused;
@@ -125,6 +129,11 @@ usbip_vhci_attach_device(HANDLE hdev, int port, usbip_wudev_t *wudev)
 
 	plugin.port = port;
 <<<<<<< HEAD
+
+	if (instid != NULL)
+		mbstowcs_s(NULL, plugin.winstid, MAX_VHCI_INSTANCE_ID, instid, _TRUNCATE);
+	else
+		plugin.winstid[0] = L'\0';
 
 	if (instid != NULL)
 		mbstowcs_s(NULL, plugin.winstid, MAX_VHCI_INSTANCE_ID, instid, _TRUNCATE);

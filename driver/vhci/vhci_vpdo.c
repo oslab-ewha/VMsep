@@ -314,8 +314,8 @@ vhci_QueryDeviceCaps_vpdo(pusbip_vpdo_dev_t vpdo, PIRP Irp)
 	// whenever the device is surprise removed.
 	deviceCapabilities->SurpriseRemovalOK = TRUE;
 
-	// We don't support system-wide unique IDs.
-	deviceCapabilities->UniqueID = FALSE;
+	// If a custom instance id is used, assume that it is system-wide unique */
+	deviceCapabilities->UniqueID = (vpdo->winstid != NULL) ? TRUE: FALSE;
 
 	// Specify whether the Device Manager should suppress all
 	// installation pop-ups except required pop-ups such as
@@ -356,11 +356,16 @@ setup_vpdo_inst_id(pusbip_vpdo_dev_t vpdo, PIRP irp)
 {
 	PWCHAR	id_inst;
 
-	id_inst = ExAllocatePoolWithTag(PagedPool, 5 * sizeof(wchar_t), USBIP_VHCI_POOL_TAG);
+	id_inst = ExAllocatePoolWithTag(PagedPool, (MAX_VHCI_INSTANCE_ID + 1) * sizeof(wchar_t), USBIP_VHCI_POOL_TAG);
 	if (id_inst == NULL) {
 		return STATUS_INSUFFICIENT_RESOURCES;
 	}
-	RtlStringCchPrintfW(id_inst, 5, L"%04hx", vpdo->port);
+
+	if (vpdo->winstid != NULL)
+		RtlStringCchCopyW(id_inst, MAX_VHCI_INSTANCE_ID + 1, vpdo->winstid);
+	else
+		RtlStringCchPrintfW(id_inst, 5, L"%04hx", vpdo->port);
+
 	irp->IoStatus.Information = (ULONG_PTR)id_inst;
 	return STATUS_SUCCESS;
 }
