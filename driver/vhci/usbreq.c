@@ -356,6 +356,38 @@ free_urbr(struct urb_req *urbr)
 	ExFreeToNPagedLookasideList(&g_lookaside, urbr);
 }
 
+BOOLEAN
+is_port_urbr(struct urb_req *urbr, unsigned char epaddr)
+{
+	PIRP	irp = urbr->irp;
+	PURB	urb;
+	PIO_STACK_LOCATION	irpstack;
+	USBD_PIPE_HANDLE	hPipe;
+
+	if (irp == NULL)
+		return FALSE;
+
+	irpstack = IoGetCurrentIrpStackLocation(irp);
+	urb = irpstack->Parameters.Others.Argument1;
+	if (urb == NULL)
+		return FALSE;
+
+	switch (urb->UrbHeader.Function) {
+	case URB_FUNCTION_BULK_OR_INTERRUPT_TRANSFER:
+		hPipe = urb->UrbBulkOrInterruptTransfer.PipeHandle;
+		break;
+	case URB_FUNCTION_ISOCH_TRANSFER:
+		hPipe = urb->UrbIsochronousTransfer.PipeHandle;
+		break;
+	default:
+		return FALSE;
+	}
+
+	if (PIPE2ADDR(hPipe) == epaddr)
+		return TRUE;
+	return FALSE;
+}
+
 NTSTATUS
 submit_urbr(pusbip_vpdo_dev_t vpdo, struct urb_req *urbr)
 >>>>>>> 10d26c6... vhci, notify a usbip server of urb cancellation

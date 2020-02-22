@@ -16,6 +16,7 @@ set_cmd_submit_usbip_header(struct usbip_header *h, unsigned long seqnum, unsign
 	unsigned int direct, USBD_PIPE_HANDLE pipe, unsigned int flags, unsigned int len);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 extern NTSTATUS
 vhci_ioctl_abort_pipe(pvpdo_dev_t vpdo, USBD_PIPE_HANDLE hPipe);
 
@@ -23,6 +24,12 @@ extern void
 =======
 void
 >>>>>>> 10d26c6... vhci, notify a usbip server of urb cancellation
+=======
+extern NTSTATUS
+vhci_ioctl_abort_pipe(pusbip_vpdo_dev_t vpdo, USBD_PIPE_HANDLE hPipe);
+
+extern void
+>>>>>>> bcf3afa... Remove pending urbr's of a vhci aborted pipe
 set_cmd_unlink_usbip_header(struct usbip_header *h, unsigned long seqnum, unsigned int devid, unsigned long seqnum_unlink);
 
 static struct usbip_header *
@@ -128,7 +135,13 @@ store_urb_reset_pipe(PIRP irp, PURB urb, struct urb_req *urbr)
 =======
 store_urb_reset_pipe(PIRP irp, PURB urb, struct urb_req *urbr)
 {
+<<<<<<< HEAD
 >>>>>>> 781e315... return stall pid to host and forward reset_pipe_request to device
+=======
+	/* 1. We clear STALL/HALT feature on endpoint specified by pipe
+	 * 2. We abort/cancel all IRP for given pipe
+	 */
+>>>>>>> bcf3afa... Remove pending urbr's of a vhci aborted pipe
 	struct _URB_PIPE_REQUEST	*urb_rp = &urb->UrbPipeRequest;
 	struct usbip_header	*hdr;
 	int	in, type;
@@ -163,19 +176,29 @@ store_urb_reset_pipe(PIRP irp, PURB urb, struct urb_req *urbr)
 
 =======
 	if (type != USB_ENDPOINT_TYPE_BULK && type != USB_ENDPOINT_TYPE_INTERRUPT) {
-		DBGE(DBG_READ, "Error, not a bulk pipe\n");
+		DBGW(DBG_READ, "CLEAR not allowed to a non-bulk pipe[%d]\n", type);
 		return STATUS_INVALID_PARAMETER;
 	}
 
-	set_cmd_submit_usbip_header(hdr, urbr->seq_num, urbr->vpdo->devid, in, urb_rp->PipeHandle, 0, 0);
+	set_cmd_submit_usbip_header(hdr, urbr->seq_num, urbr->vpdo->devid, 0, 0, 0, 0);
 	RtlZeroMemory(hdr->u.cmd_submit.setup, 8);
 
 	usb_cspkt_t *csp = (usb_cspkt_t *)hdr->u.cmd_submit.setup;
-	build_setup_packet(csp, 0, BMREQUEST_STANDARD, BMREQUEST_TO_ENDPOINT, USB_REQUEST_RESET_PIPE);
+	build_setup_packet(csp, 0, BMREQUEST_STANDARD, BMREQUEST_TO_ENDPOINT, USB_REQUEST_CLEAR_FEATURE);
+	csp->wIndex.LowByte = PIPE2ADDR(urb_rp->PipeHandle) | (unsigned char)(in << 7); // Specify enpoint address and direction
+	csp->wIndex.HiByte = 0;
+	csp->wValue.W = 0; // clear ENDPOINT_HALT
+	csp->wLength = 0;
 
 	irp->IoStatus.Information = sizeof(struct usbip_header);
 
+<<<<<<< HEAD
 >>>>>>> 781e315... return stall pid to host and forward reset_pipe_request to device
+=======
+	// cancel/abort all URBs for given pipe
+	vhci_ioctl_abort_pipe(urbr->vpdo, urb_rp->PipeHandle);
+
+>>>>>>> bcf3afa... Remove pending urbr's of a vhci aborted pipe
 	return STATUS_SUCCESS;
 }
 

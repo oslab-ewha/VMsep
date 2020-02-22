@@ -37,14 +37,48 @@ vhci_get_ports_status(ioctl_usbip_vhci_get_ports_status *st, pusbip_vhub_dev_t v
 extern PAGEABLE NTSTATUS
 vhci_eject_device(PUSBIP_VHCI_EJECT_HARDWARE Eject, pusbip_vhub_dev_t vhub);
 
-static NTSTATUS
-process_urb_abort_pipe(pusbip_vpdo_dev_t vpdo, PURB urb)
+NTSTATUS
+vhci_ioctl_abort_pipe(pusbip_vpdo_dev_t vpdo, USBD_PIPE_HANDLE hPipe)
 {
-	UNREFERENCED_PARAMETER(vpdo);
-	UNREFERENCED_PARAMETER(urb);
+	KIRQL		oldirql;
+	PLIST_ENTRY	le;
+	unsigned char	epaddr;
 
-	////TODO need to check
-	DBGI(DBG_IOCTL, "abort_pipe: %x\n", urb->UrbPipeRequest.PipeHandle);
+	if (!hPipe) {
+		DBGI(DBG_IOCTL, "vhci_ioctl_abort_pipe: empty pipe handle\n");
+		return STATUS_INVALID_PARAMETER;
+	}
+
+	epaddr = PIPE2ADDR(hPipe);
+
+	DBGI(DBG_IOCTL, "vhci_ioctl_abort_pipe: EP: %02x\n", epaddr);
+
+	KeAcquireSpinLock(&vpdo->lock_urbr, &oldirql);
+
+	// remove all URBRs of the aborted pipe
+	for (le = vpdo->head_urbr.Flink; le != &vpdo->head_urbr;) {
+		struct urb_req	*urbr_local = CONTAINING_RECORD(le, struct urb_req, list_all);
+		le = le->Flink;
+
+		if (!is_port_urbr(urbr_local, epaddr))
+			continue;
+
+		DBGI(DBG_IOCTL, "aborted urbr removed: %s\n", dbg_urbr(urbr_local));
+
+		if (urbr_local->irp) {
+			PIRP	irp = urbr_local->irp;
+
+			IoSetCancelRoutine(irp, NULL);
+			irp->IoStatus.Status = STATUS_CANCELLED;
+			IoCompleteRequest(irp, IO_NO_INCREMENT);
+		}
+		RemoveEntryListInit(&urbr_local->list_state);
+		RemoveEntryListInit(&urbr_local->list_all);
+		free_urbr(urbr_local);
+	}
+
+	KeReleaseSpinLock(&vpdo->lock_urbr, oldirql);
+
 	return STATUS_SUCCESS;
 }
 
@@ -85,7 +119,7 @@ process_irp_urb_req(pusbip_vpdo_dev_t vpdo, PIRP irp, PURB urb)
 
 	switch (urb->UrbHeader.Function) {
 	case URB_FUNCTION_ABORT_PIPE:
-		return process_urb_abort_pipe(vpdo, urb);
+		return vhci_ioctl_abort_pipe(vpdo, urb->UrbPipeRequest.PipeHandle);
 	case URB_FUNCTION_GET_CURRENT_FRAME_NUMBER:
 		return process_urb_get_frame(vpdo, urb);
 	case URB_FUNCTION_SELECT_CONFIGURATION:

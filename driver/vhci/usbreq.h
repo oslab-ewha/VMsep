@@ -48,8 +48,17 @@ submit_urbr(pusbip_vpdo_dev_t vpdo, struct urb_req *urbr);
 extern struct urb_req *
 create_urbr(pusbip_vpdo_dev_t vpdo, PIRP irp, unsigned long seq_num_unlink);
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 10d26c6... vhci, notify a usbip server of urb cancellation
 =======
 extern void
 free_urbr(struct urb_req *urbr);
 >>>>>>> 5bf18d1... Fix BSOD caused when a partially sent urbr is unlinked
+=======
+
+extern void
+free_urbr(struct urb_req *urbr);
+
+extern BOOLEAN
+is_port_urbr(struct urb_req *urbr, unsigned char epaddr);
+>>>>>>> bcf3afa... Remove pending urbr's of a vhci aborted pipe
