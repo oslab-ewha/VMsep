@@ -989,8 +989,13 @@ on_pending_irp_read_cancelled(PDEVICE_OBJECT devobj, PIRP irp_read)
 	UNREFERENCED_PARAMETER(devobj);
 	DBGI(DBG_READ, "pending irp read cancelled %p\n", irp_read);
 
+<<<<<<< HEAD
 	PIO_STACK_LOCATION	irpstack;
 	pvpdo_dev_t	vpdo;
+=======
+	KIRQL	oldirql;
+	pusbip_vpdo_dev_t	vpdo;
+>>>>>>> d410426... fix vhci compilation error
 
 	IoReleaseCancelSpinLock(irp_read->CancelIrql);
 
