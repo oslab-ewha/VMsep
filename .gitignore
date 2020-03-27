@@ -1,0 +1,9 @@
+*~
+*.swp
+*.cmd
+*.o
+*.ur-safe
+.cache.mk
+cscope.out
+modules.order
+Module.symvers
