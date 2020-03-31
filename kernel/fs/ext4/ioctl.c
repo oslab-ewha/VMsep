@@ -484,14 +484,14 @@ static int ext4_shutdown(struct super_block *sb, unsigned long arg)
 		set_bit(EXT4_FLAGS_SHUTDOWN, &sbi->s_ext4_flags);
 		if (sbi->s_journal && !is_journal_aborted(sbi->s_journal)) {
 			(void) ext4_force_commit(sb);
-			jbd2_journal_abort(sbi->s_journal, 0);
+			jbd2_vmsep_journal_abort(sbi->s_journal, 0);
 		}
 		break;
 	case EXT4_GOING_FLAGS_NOLOGFLUSH:
 		set_bit(EXT4_FLAGS_SHUTDOWN, &sbi->s_ext4_flags);
 		if (sbi->s_journal && !is_journal_aborted(sbi->s_journal)) {
 			msleep(100);
-			jbd2_journal_abort(sbi->s_journal, 0);
+			jbd2_vmsep_journal_abort(sbi->s_journal, 0);
 		}
 		break;
 	default:
@@ -704,9 +704,9 @@ setversion_out:
 
 		err = ext4_group_extend(sb, EXT4_SB(sb)->s_es, n_blocks_count);
 		if (EXT4_SB(sb)->s_journal) {
-			jbd2_journal_lock_updates(EXT4_SB(sb)->s_journal);
-			err2 = jbd2_journal_flush(EXT4_SB(sb)->s_journal);
-			jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
+			jbd2_vmsep_journal_lock_updates(EXT4_SB(sb)->s_journal);
+			err2 = jbd2_vmsep_journal_flush(EXT4_SB(sb)->s_journal);
+			jbd2_vmsep_journal_unlock_updates(EXT4_SB(sb)->s_journal);
 		}
 		if (err == 0)
 			err = err2;
@@ -794,9 +794,9 @@ mext_out:
 
 		err = ext4_group_add(sb, &input);
 		if (EXT4_SB(sb)->s_journal) {
-			jbd2_journal_lock_updates(EXT4_SB(sb)->s_journal);
-			err2 = jbd2_journal_flush(EXT4_SB(sb)->s_journal);
-			jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
+			jbd2_vmsep_journal_lock_updates(EXT4_SB(sb)->s_journal);
+			err2 = jbd2_vmsep_journal_flush(EXT4_SB(sb)->s_journal);
+			jbd2_vmsep_journal_unlock_updates(EXT4_SB(sb)->s_journal);
 		}
 		if (err == 0)
 			err = err2;
@@ -884,9 +884,9 @@ group_add_out:
 
 		err = ext4_resize_fs(sb, n_blocks_count);
 		if (EXT4_SB(sb)->s_journal) {
-			jbd2_journal_lock_updates(EXT4_SB(sb)->s_journal);
-			err2 = jbd2_journal_flush(EXT4_SB(sb)->s_journal);
-			jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
+			jbd2_vmsep_journal_lock_updates(EXT4_SB(sb)->s_journal);
+			err2 = jbd2_vmsep_journal_flush(EXT4_SB(sb)->s_journal);
+			jbd2_vmsep_journal_unlock_updates(EXT4_SB(sb)->s_journal);
 		}
 		if (err == 0)
 			err = err2;

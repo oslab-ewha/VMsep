@@ -415,7 +415,7 @@ stop_journal:
 	/* Buffer was busy because probably is pinned to journal transaction,
 	 * force transaction commit may help to free it. */
 	if (*err == -EBUSY && retries++ < 4 && EXT4_SB(sb)->s_journal &&
-	    jbd2_journal_force_commit_nested(EXT4_SB(sb)->s_journal))
+	    jbd2_vmsep_journal_force_commit_nested(EXT4_SB(sb)->s_journal))
 		goto again;
 	return replaced_count;
 

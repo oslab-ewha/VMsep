@@ -77,8 +77,8 @@ handle_t *__ext4_journal_start_sb(struct super_block *sb, unsigned int line,
 	journal = EXT4_SB(sb)->s_journal;
 	if (!journal)
 		return ext4_get_nojournal();
-	return jbd2__journal_start(journal, blocks, rsv_blocks, GFP_NOFS,
-				   type, line);
+	return jbd2_vmsep__journal_start(journal, blocks, rsv_blocks, GFP_NOFS,
+					 type, line);
 }
 
 int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle)
@@ -94,12 +94,12 @@ int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle)
 
 	err = handle->h_err;
 	if (!handle->h_transaction) {
-		rc = jbd2_journal_stop(handle);
+		rc = jbd2_vmsep_journal_stop(handle);
 		return err ? err : rc;
 	}
 
 	sb = handle->h_transaction->t_journal->j_private;
-	rc = jbd2_journal_stop(handle);
+	rc = jbd2_vmsep_journal_stop(handle);
 
 	if (!err)
 		err = rc;
@@ -122,11 +122,11 @@ handle_t *__ext4_journal_start_reserved(handle_t *handle, unsigned int line,
 					  _RET_IP_);
 	err = ext4_journal_check_start(sb);
 	if (err < 0) {
-		jbd2_journal_free_reserved(handle);
+		jbd2_vmsep_journal_free_reserved(handle);
 		return ERR_PTR(err);
 	}
 
-	err = jbd2_journal_start_reserved(handle, type, line);
+	err = jbd2_vmsep_journal_start_reserved(handle, type, line);
 	if (err < 0)
 		return ERR_PTR(err);
 	return handle;
@@ -172,7 +172,7 @@ int __ext4_journal_get_write_access(const char *where, unsigned int line,
 			jbd2_journal_abort_handle(handle);
 			return -EIO;
 		}
-		err = jbd2_journal_get_write_access(handle, bh);
+		err = jbd2_vmsep_journal_get_write_access(handle, bh);
 		if (err)
 			ext4_journal_abort_handle(where, line, __func__, bh,
 						  handle, err);
@@ -223,7 +223,7 @@ int __ext4_forget(const char *where, unsigned int line, handle_t *handle,
 	    (!is_metadata && !ext4_should_journal_data(inode))) {
 		if (bh) {
 			BUFFER_TRACE(bh, "call jbd2_journal_forget");
-			err = jbd2_journal_forget(handle, bh);
+			err = jbd2_vmsep_journal_forget(handle, bh);
 			if (err)
 				ext4_journal_abort_handle(where, line, __func__,
 							  bh, handle, err);
@@ -236,7 +236,7 @@ int __ext4_forget(const char *where, unsigned int line, handle_t *handle,
 	 * data!=journal && (is_metadata || should_journal_data(inode))
 	 */
 	BUFFER_TRACE(bh, "call jbd2_journal_revoke");
-	err = jbd2_journal_revoke(handle, blocknr, bh);
+	err = jbd2_vmsep_journal_revoke(handle, blocknr, bh);
 	if (err) {
 		ext4_journal_abort_handle(where, line, __func__,
 					  bh, handle, err);
@@ -253,7 +253,7 @@ int __ext4_journal_get_create_access(const char *where, unsigned int line,
 	int err = 0;
 
 	if (ext4_handle_valid(handle)) {
-		err = jbd2_journal_get_create_access(handle, bh);
+		err = jbd2_vmsep_journal_get_create_access(handle, bh);
 		if (err)
 			ext4_journal_abort_handle(where, line, __func__,
 						  bh, handle, err);
@@ -272,7 +272,7 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
 	set_buffer_meta(bh);
 	set_buffer_prio(bh);
 	if (ext4_handle_valid(handle)) {
-		err = jbd2_journal_dirty_metadata(handle, bh);
+		err = jbd2_vmsep_journal_dirty_metadata(handle, bh);
 		/* Errors can only happen due to aborted journal or a nasty bug */
 		if (!is_handle_aborted(handle) && WARN_ON_ONCE(err)) {
 			ext4_journal_abort_handle(where, line, __func__, bh,
@@ -328,7 +328,7 @@ int __ext4_handle_dirty_super(const char *where, unsigned int line,
 
 	ext4_superblock_csum_set(sb);
 	if (ext4_handle_valid(handle)) {
-		err = jbd2_journal_dirty_metadata(handle, bh);
+		err = jbd2_vmsep_journal_dirty_metadata(handle, bh);
 		if (err)
 			ext4_journal_abort_handle(where, line, __func__,
 						  bh, handle, err);

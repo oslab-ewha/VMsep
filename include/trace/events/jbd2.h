@@ -10,7 +10,7 @@
 struct transaction_chp_stats_s;
 struct transaction_run_stats_s;
 
-TRACE_EVENT(jbd2_checkpoint,
+TRACE_EVENT(jbd2_vmsep_checkpoint,
 
 	TP_PROTO(journal_t *journal, int result),
 
@@ -53,42 +53,42 @@ DECLARE_EVENT_CLASS(jbd2_commit,
 		  __entry->transaction, __entry->sync_commit)
 );
 
-DEFINE_EVENT(jbd2_commit, jbd2_start_commit,
+DEFINE_EVENT(jbd2_commit, jbd2_vmsep_start_commit,
 
 	TP_PROTO(journal_t *journal, transaction_t *commit_transaction),
 
 	TP_ARGS(journal, commit_transaction)
 );
 
-DEFINE_EVENT(jbd2_commit, jbd2_commit_locking,
+DEFINE_EVENT(jbd2_commit, jbd2_vmsep_commit_locking,
 
 	TP_PROTO(journal_t *journal, transaction_t *commit_transaction),
 
 	TP_ARGS(journal, commit_transaction)
 );
 
-DEFINE_EVENT(jbd2_commit, jbd2_commit_flushing,
+DEFINE_EVENT(jbd2_commit, jbd2_vmsep_commit_flushing,
 
 	TP_PROTO(journal_t *journal, transaction_t *commit_transaction),
 
 	TP_ARGS(journal, commit_transaction)
 );
 
-DEFINE_EVENT(jbd2_commit, jbd2_commit_logging,
+DEFINE_EVENT(jbd2_commit, jbd2_vmsep_commit_logging,
 
 	TP_PROTO(journal_t *journal, transaction_t *commit_transaction),
 
 	TP_ARGS(journal, commit_transaction)
 );
 
-DEFINE_EVENT(jbd2_commit, jbd2_drop_transaction,
+DEFINE_EVENT(jbd2_commit, jbd2_vmsep_drop_transaction,
 
 	TP_PROTO(journal_t *journal, transaction_t *commit_transaction),
 
 	TP_ARGS(journal, commit_transaction)
 );
 
-TRACE_EVENT(jbd2_end_commit,
+TRACE_EVENT(jbd2_vmsep_end_commit,
 	TP_PROTO(journal_t *journal, transaction_t *commit_transaction),
 
 	TP_ARGS(journal, commit_transaction),
@@ -112,7 +112,7 @@ TRACE_EVENT(jbd2_end_commit,
 		  __entry->transaction, __entry->sync_commit, __entry->head)
 );
 
-TRACE_EVENT(jbd2_submit_inode_data,
+TRACE_EVENT(jbd2_vmsep_submit_inode_data,
 	TP_PROTO(struct inode *inode),
 
 	TP_ARGS(inode),
@@ -132,7 +132,7 @@ TRACE_EVENT(jbd2_submit_inode_data,
 		  (unsigned long) __entry->ino)
 );
 
-TRACE_EVENT(jbd2_handle_start,
+TRACE_EVENT(jbd2_vmsep_handle_start,
 	TP_PROTO(dev_t dev, unsigned long tid, unsigned int type,
 		 unsigned int line_no, int requested_blocks),
 
@@ -160,7 +160,7 @@ TRACE_EVENT(jbd2_handle_start,
 		  __entry->type, __entry->line_no, __entry->requested_blocks)
 );
 
-TRACE_EVENT(jbd2_handle_extend,
+TRACE_EVENT(jbd2_vmsep_handle_extend,
 	TP_PROTO(dev_t dev, unsigned long tid, unsigned int type,
 		 unsigned int line_no, int buffer_credits,
 		 int requested_blocks),
@@ -192,7 +192,7 @@ TRACE_EVENT(jbd2_handle_extend,
 		  __entry->requested_blocks)
 );
 
-TRACE_EVENT(jbd2_handle_stats,
+TRACE_EVENT(jbd2_vmsep_handle_stats,
 	TP_PROTO(dev_t dev, unsigned long tid, unsigned int type,
 		 unsigned int line_no, int interval, int sync,
 		 int requested_blocks, int dirtied_blocks),
@@ -230,7 +230,7 @@ TRACE_EVENT(jbd2_handle_stats,
 		  __entry->dirtied_blocks)
 );
 
-TRACE_EVENT(jbd2_run_stats,
+TRACE_EVENT(jbd2_vmsep_run_stats,
 	TP_PROTO(dev_t dev, unsigned long tid,
 		 struct transaction_run_stats_s *stats),
 
@@ -278,7 +278,7 @@ TRACE_EVENT(jbd2_run_stats,
 		  __entry->blocks_logged)
 );
 
-TRACE_EVENT(jbd2_checkpoint_stats,
+TRACE_EVENT(jbd2_vmsep_checkpoint_stats,
 	TP_PROTO(dev_t dev, unsigned long tid,
 		 struct transaction_chp_stats_s *stats),
 
@@ -309,7 +309,7 @@ TRACE_EVENT(jbd2_checkpoint_stats,
 		  __entry->forced_to_close, __entry->written, __entry->dropped)
 );
 
-TRACE_EVENT(jbd2_update_log_tail,
+TRACE_EVENT(jbd2_vmsep_update_log_tail,
 
 	TP_PROTO(journal_t *journal, tid_t first_tid,
 		 unsigned long block_nr, unsigned long freed),
@@ -338,7 +338,7 @@ TRACE_EVENT(jbd2_update_log_tail,
 		  __entry->block_nr, __entry->freed)
 );
 
-TRACE_EVENT(jbd2_write_superblock,
+TRACE_EVENT(jbd2_vmsep_write_superblock,
 
 	TP_PROTO(journal_t *journal, int write_op),
 
@@ -358,7 +358,7 @@ TRACE_EVENT(jbd2_write_superblock,
 		  MINOR(__entry->dev), __entry->write_op)
 );
 
-TRACE_EVENT(jbd2_lock_buffer_stall,
+TRACE_EVENT(jbd2_vmsep_lock_buffer_stall,
 
 	TP_PROTO(dev_t dev, unsigned long stall_ms),
 

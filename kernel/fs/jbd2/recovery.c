@@ -87,7 +87,7 @@ static int do_readahead(journal_t *journal, unsigned int start)
 	nbufs = 0;
 
 	for (next = start; next < max; next++) {
-		err = jbd2_journal_bmap(journal, next, &blocknr);
+		err = jbd2_vmsep_journal_bmap(journal, next, &blocknr);
 
 		if (err) {
 			printk(KERN_ERR "JBD2: bad block at offset %u\n",
@@ -143,7 +143,7 @@ static int jread(struct buffer_head **bhp, journal_t *journal,
 		return -EFSCORRUPTED;
 	}
 
-	err = jbd2_journal_bmap(journal, offset, &blocknr);
+	err = jbd2_vmsep_journal_bmap(journal, offset, &blocknr);
 
 	if (err) {
 		printk(KERN_ERR "JBD2: bad block at offset %u\n",
@@ -202,7 +202,7 @@ static int count_tags(journal_t *journal, struct buffer_head *bh)
 	char *			tagp;
 	journal_block_tag_t *	tag;
 	int			nr = 0, size = journal->j_blocksize;
-	int			tag_bytes = journal_tag_bytes(journal);
+	int			tag_bytes = journal_vmsep_tag_bytes(journal);
 
 	if (jbd2_journal_has_csum_v2or3(journal))
 		size -= sizeof(struct jbd2_journal_block_tail);
@@ -244,7 +244,7 @@ do {									\
  * blocks.  In the third and final pass, we replay any un-revoked blocks
  * in the log.
  */
-int jbd2_journal_recover(journal_t *journal)
+int jbd2_vmsep_journal_recover(journal_t *journal)
 {
 	int			err, err2;
 	journal_superblock_t *	sb;
@@ -283,7 +283,7 @@ int jbd2_journal_recover(journal_t *journal)
 	 * any existing commit records in the log. */
 	journal->j_transaction_sequence = ++info.end_transaction;
 
-	jbd2_journal_clear_revoke(journal);
+	jbd2_vmsep_journal_clear_revoke(journal);
 	err2 = sync_blockdev(journal->j_fs_dev);
 	if (!err)
 		err = err2;
@@ -309,7 +309,7 @@ int jbd2_journal_recover(journal_t *journal)
  * much recovery information is being erased, and to let us initialise
  * the journal transaction sequence numbers to the next unused ID.
  */
-int jbd2_journal_skip_recovery(journal_t *journal)
+int jbd2_vmsep_journal_skip_recovery(journal_t *journal)
 {
 	int			err;
 
@@ -427,7 +427,7 @@ static int do_one_pass(journal_t *journal,
 	struct buffer_head *	bh;
 	unsigned int		sequence;
 	int			blocktype;
-	int			tag_bytes = journal_tag_bytes(journal);
+	int			tag_bytes = journal_vmsep_tag_bytes(journal);
 	__u32			crc32_sum = ~0; /* Transactional Checksums */
 	int			descr_csum_size = 0;
 	int			block_error = 0;
@@ -587,7 +587,7 @@ static int do_one_pass(journal_t *journal,
 					/* If the block has been
 					 * revoked, then we're all done
 					 * here. */
-					if (jbd2_journal_test_revoke
+					if (jbd2_vmsep_journal_test_revoke
 					    (journal, blocknr,
 					     next_commit_ID)) {
 						brelse(obh);
@@ -846,7 +846,7 @@ static int scan_revoke_records(journal_t *journal, struct buffer_head *bh,
 		else
 			blocknr = be64_to_cpu(* ((__be64 *) (bh->b_data+offset)));
 		offset += record_len;
-		err = jbd2_journal_set_revoke(journal, blocknr, sequence);
+		err = jbd2_vmsep_journal_set_revoke(journal, blocknr, sequence);
 		if (err)
 			return err;
 		++info->nr_revokes;

@@ -615,7 +615,7 @@ int ext4_should_retry_alloc(struct super_block *sb, int *retries)
 
 	smp_mb();
 	if (EXT4_SB(sb)->s_mb_free_pending)
-		jbd2_journal_force_commit_nested(EXT4_SB(sb)->s_journal);
+		jbd2_vmsep_journal_force_commit_nested(EXT4_SB(sb)->s_journal);
 	return 1;
 }
 

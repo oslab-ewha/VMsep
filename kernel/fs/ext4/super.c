@@ -418,7 +418,7 @@ static void ext4_handle_error(struct super_block *sb)
 
 		EXT4_SB(sb)->s_mount_flags |= EXT4_MF_FS_ABORTED;
 		if (journal)
-			jbd2_journal_abort(journal, -EIO);
+			jbd2_vmsep_journal_abort(journal, -EIO);
 	}
 	if (test_opt(sb, ERRORS_RO)) {
 		ext4_msg(sb, KERN_CRIT, "Remounting filesystem read-only");
@@ -643,7 +643,7 @@ void __ext4_abort(struct super_block *sb, const char *function,
 		smp_wmb();
 		sb->s_flags |= MS_RDONLY;
 		if (EXT4_SB(sb)->s_journal)
-			jbd2_journal_abort(EXT4_SB(sb)->s_journal, -EIO);
+			jbd2_vmsep_journal_abort(EXT4_SB(sb)->s_journal, -EIO);
 		save_error_info(sb, function, line);
 	}
 	if (test_opt(sb, ERRORS_PANIC)) {
@@ -881,7 +881,7 @@ static void ext4_put_super(struct super_block *sb)
 
 	if (sbi->s_journal) {
 		aborted = is_journal_aborted(sbi->s_journal);
-		err = jbd2_journal_destroy(sbi->s_journal);
+		err = jbd2_vmsep_journal_destroy(sbi->s_journal);
 		sbi->s_journal = NULL;
 		if ((err < 0) && !aborted)
 			ext4_abort(sb, "Couldn't clean up the journal");
@@ -1069,7 +1069,7 @@ void ext4_clear_inode(struct inode *inode)
 	ext4_discard_preallocations(inode);
 	ext4_es_remove_extent(inode, 0, EXT_MAX_BLOCKS);
 	if (EXT4_I(inode)->jinode) {
-		jbd2_journal_release_jbd_inode(EXT4_JOURNAL(inode),
+		jbd2_vmsep_journal_release_jbd_inode(EXT4_JOURNAL(inode),
 					       EXT4_I(inode)->jinode);
 		jbd2_free_inode(EXT4_I(inode)->jinode);
 		EXT4_I(inode)->jinode = NULL;
@@ -1137,8 +1137,8 @@ static int bdev_try_to_free_page(struct super_block *sb, struct page *page,
 	if (!page_has_buffers(page))
 		return 0;
 	if (journal)
-		return jbd2_journal_try_to_free_buffers(journal, page,
-						wait & ~__GFP_DIRECT_RECLAIM);
+		return jbd2_vmsep_journal_try_to_free_buffers(journal, page,
+							      wait & ~__GFP_DIRECT_RECLAIM);
 	return try_to_free_buffers(page);
 }
 
@@ -3233,24 +3233,24 @@ static int set_journal_csum_feature_set(struct super_block *sb)
 		incompat = 0;
 	}
 
-	jbd2_journal_clear_features(sbi->s_journal,
+	jbd2_vmsep_journal_clear_features(sbi->s_journal,
 			JBD2_FEATURE_COMPAT_CHECKSUM, 0,
 			JBD2_FEATURE_INCOMPAT_CSUM_V3 |
 			JBD2_FEATURE_INCOMPAT_CSUM_V2);
 	if (test_opt(sb, JOURNAL_ASYNC_COMMIT)) {
-		ret = jbd2_journal_set_features(sbi->s_journal,
-				compat, 0,
-				JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT |
-				incompat);
+		ret = jbd2_vmsep_journal_set_features(sbi->s_journal,
+						      compat, 0,
+						      JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT |
+						      incompat);
 	} else if (test_opt(sb, JOURNAL_CHECKSUM)) {
-		ret = jbd2_journal_set_features(sbi->s_journal,
-				compat, 0,
-				incompat);
-		jbd2_journal_clear_features(sbi->s_journal, 0, 0,
-				JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT);
+		ret = jbd2_vmsep_journal_set_features(sbi->s_journal,
+						      compat, 0,
+						      incompat);
+		jbd2_vmsep_journal_clear_features(sbi->s_journal, 0, 0,
+						  JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT);
 	} else {
-		jbd2_journal_clear_features(sbi->s_journal, 0, 0,
-				JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT);
+		jbd2_vmsep_journal_clear_features(sbi->s_journal, 0, 0,
+						  JBD2_FEATURE_INCOMPAT_ASYNC_COMMIT);
 	}
 
 	return ret;
@@ -4101,8 +4101,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
 	}
 
 	if (ext4_has_feature_64bit(sb) &&
-	    !jbd2_journal_set_features(EXT4_SB(sb)->s_journal, 0, 0,
-				       JBD2_FEATURE_INCOMPAT_64BIT)) {
+	    !jbd2_vmsep_journal_set_features(EXT4_SB(sb)->s_journal, 0, 0,
+					     JBD2_FEATURE_INCOMPAT_64BIT)) {
 		ext4_msg(sb, KERN_ERR, "Failed to set 64-bit journal feature");
 		goto failed_mount_wq;
 	}
@@ -4121,7 +4121,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
 		 * capabilities: ORDERED_DATA if the journal can
 		 * cope, else JOURNAL_DATA
 		 */
-		if (jbd2_journal_check_available_features
+		if (jbd2_vmsep_journal_check_available_features
 		    (sbi->s_journal, 0, 0, JBD2_FEATURE_INCOMPAT_REVOKE))
 			set_opt(sb, ORDERED_DATA);
 		else
@@ -4130,7 +4130,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
 
 	case EXT4_MOUNT_ORDERED_DATA:
 	case EXT4_MOUNT_WRITEBACK_DATA:
-		if (!jbd2_journal_check_available_features
+		if (!jbd2_vmsep_journal_check_available_features
 		    (sbi->s_journal, 0, 0, JBD2_FEATURE_INCOMPAT_REVOKE)) {
 			ext4_msg(sb, KERN_ERR, "Journal does not support "
 			       "requested data journaling mode");
@@ -4408,7 +4408,7 @@ failed_mount_wq:
 		sbi->s_ea_block_cache = NULL;
 	}
 	if (sbi->s_journal) {
-		jbd2_journal_destroy(sbi->s_journal);
+		jbd2_vmsep_journal_destroy(sbi->s_journal);
 		sbi->s_journal = NULL;
 	}
 failed_mount3a:
@@ -4509,7 +4509,7 @@ static journal_t *ext4_get_journal(struct super_block *sb,
 	if (!journal_inode)
 		return NULL;
 
-	journal = jbd2_journal_init_inode(journal_inode);
+	journal = jbd2_vmsep_journal_init_inode(journal_inode);
 	if (!journal) {
 		ext4_msg(sb, KERN_ERR, "Could not load journal inode");
 		iput(journal_inode);
@@ -4585,8 +4585,8 @@ static journal_t *ext4_get_dev_journal(struct super_block *sb,
 	start = sb_block + 1;
 	brelse(bh);	/* we're done with the superblock */
 
-	journal = jbd2_journal_init_dev(bdev, sb->s_bdev,
-					start, len, blocksize);
+	journal = jbd2_vmsep_journal_init_dev(bdev, sb->s_bdev,
+					      start, len, blocksize);
 	if (!journal) {
 		ext4_msg(sb, KERN_ERR, "failed to create device journal");
 		goto out_bdev;
@@ -4609,7 +4609,7 @@ static journal_t *ext4_get_dev_journal(struct super_block *sb,
 	return journal;
 
 out_journal:
-	jbd2_journal_destroy(journal);
+	jbd2_vmsep_journal_destroy(journal);
 out_bdev:
 	ext4_blkdev_put(bdev);
 	return NULL;
@@ -4674,13 +4674,13 @@ static int ext4_load_journal(struct super_block *sb,
 		ext4_msg(sb, KERN_INFO, "barriers disabled");
 
 	if (!ext4_has_feature_journal_needs_recovery(sb))
-		err = jbd2_journal_wipe(journal, !really_read_only);
+		err = jbd2_vmsep_journal_wipe(journal, !really_read_only);
 	if (!err) {
 		char *save = kmalloc(EXT4_S_ERR_LEN, GFP_KERNEL);
 		if (save)
 			memcpy(save, ((char *) es) +
 			       EXT4_S_ERR_START, EXT4_S_ERR_LEN);
-		err = jbd2_journal_load(journal);
+		err = jbd2_vmsep_journal_load(journal);
 		if (save)
 			memcpy(((char *) es) + EXT4_S_ERR_START,
 			       save, EXT4_S_ERR_LEN);
@@ -4689,7 +4689,7 @@ static int ext4_load_journal(struct super_block *sb,
 
 	if (err) {
 		ext4_msg(sb, KERN_ERR, "error loading journal");
-		jbd2_journal_destroy(journal);
+		jbd2_vmsep_journal_destroy(journal);
 		return err;
 	}
 
@@ -4794,8 +4794,8 @@ static void ext4_mark_recovery_complete(struct super_block *sb,
 		BUG_ON(journal != NULL);
 		return;
 	}
-	jbd2_journal_lock_updates(journal);
-	if (jbd2_journal_flush(journal) < 0)
+	jbd2_vmsep_journal_lock_updates(journal);
+	if (jbd2_vmsep_journal_flush(journal) < 0)
 		goto out;
 
 	if (ext4_has_feature_journal_needs_recovery(sb) &&
@@ -4805,7 +4805,7 @@ static void ext4_mark_recovery_complete(struct super_block *sb,
 	}
 
 out:
-	jbd2_journal_unlock_updates(journal);
+	jbd2_vmsep_journal_unlock_updates(journal);
 }
 
 /*
@@ -4829,7 +4829,7 @@ static void ext4_clear_journal_err(struct super_block *sb,
 	 * journal by a prior ext4_error() or ext4_abort()
 	 */
 
-	j_errno = jbd2_journal_errno(journal);
+	j_errno = jbd2_vmsep_journal_errno(journal);
 	if (j_errno) {
 		char nbuf[16];
 
@@ -4842,8 +4842,8 @@ static void ext4_clear_journal_err(struct super_block *sb,
 		es->s_state |= cpu_to_le16(EXT4_ERROR_FS);
 		ext4_commit_super(sb, 1);
 
-		jbd2_journal_clear_err(journal);
-		jbd2_journal_update_sb_errno(journal);
+		jbd2_vmsep_journal_clear_err(journal);
+		jbd2_vmsep_journal_update_sb_errno(journal);
 	}
 }
 
@@ -4887,13 +4887,13 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
 	if (sbi->s_journal) {
 		target = jbd2_get_latest_transaction(sbi->s_journal);
 		if (wait && sbi->s_journal->j_flags & JBD2_BARRIER &&
-		    !jbd2_trans_will_send_data_barrier(sbi->s_journal, target))
+		    !jbd2_vmsep_trans_will_send_data_barrier(sbi->s_journal, target))
 			needs_barrier = true;
 
-		if (jbd2_journal_start_commit(sbi->s_journal, &target)) {
+		if (jbd2_vmsep_journal_start_commit(sbi->s_journal, &target)) {
 			if (wait)
-				ret = jbd2_log_wait_commit(sbi->s_journal,
-							   target);
+				ret = jbd2_vmsep_log_wait_commit(sbi->s_journal,
+								 target);
 		}
 	} else if (wait && test_opt(sb, BARRIER))
 		needs_barrier = true;
@@ -4927,13 +4927,13 @@ static int ext4_freeze(struct super_block *sb)
 
 	if (journal) {
 		/* Now we set up the journal barrier. */
-		jbd2_journal_lock_updates(journal);
+		jbd2_vmsep_journal_lock_updates(journal);
 
 		/*
 		 * Don't clear the needs_recovery flag if we failed to
 		 * flush the journal.
 		 */
-		error = jbd2_journal_flush(journal);
+		error = jbd2_vmsep_journal_flush(journal);
 		if (error < 0)
 			goto out;
 
@@ -4945,7 +4945,7 @@ static int ext4_freeze(struct super_block *sb)
 out:
 	if (journal)
 		/* we rely on upper layer to stop further updates */
-		jbd2_journal_unlock_updates(journal);
+		jbd2_vmsep_journal_unlock_updates(journal);
 	return error;
 }
 
@@ -5480,9 +5480,9 @@ static int ext4_quota_on(struct super_block *sb, int type, int format_id,
 		 * We don't need to lock updates but journal_flush() could
 		 * otherwise be livelocked...
 		 */
-		jbd2_journal_lock_updates(EXT4_SB(sb)->s_journal);
-		err = jbd2_journal_flush(EXT4_SB(sb)->s_journal);
-		jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
+		jbd2_vmsep_journal_lock_updates(EXT4_SB(sb)->s_journal);
+		err = jbd2_vmsep_journal_flush(EXT4_SB(sb)->s_journal);
+		jbd2_vmsep_journal_unlock_updates(EXT4_SB(sb)->s_journal);
 		if (err)
 			return err;
 	}
@@ -5803,7 +5803,7 @@ static inline int ext3_feature_set_ok(struct super_block *sb)
 
 static struct file_system_type ext4_fs_type = {
 	.owner		= THIS_MODULE,
-	.name		= "ext4",
+	.name		= "ext4_vmsep",
 	.mount		= ext4_mount,
 	.kill_sb	= kill_block_super,
 	.fs_flags	= FS_REQUIRES_DEV | FS_USERNS_MOUNT,

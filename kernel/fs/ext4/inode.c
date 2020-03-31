@@ -130,9 +130,9 @@ static inline int ext4_begin_ordered_truncate(struct inode *inode,
 	 */
 	if (!EXT4_I(inode)->jinode)
 		return 0;
-	return jbd2_journal_begin_ordered_truncate(EXT4_JOURNAL(inode),
-						   EXT4_I(inode)->jinode,
-						   new_size);
+	return jbd2_vmsep_journal_begin_ordered_truncate(EXT4_JOURNAL(inode),
+							 EXT4_I(inode)->jinode,
+							 new_size);
 }
 
 static void ext4_invalidatepage(struct page *page, unsigned int offset,
@@ -216,7 +216,7 @@ void ext4_evict_inode(struct inode *inode)
 			journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
 			tid_t commit_tid = EXT4_I(inode)->i_datasync_tid;
 
-			jbd2_complete_transaction(journal, commit_tid);
+			jbd2_vmsep_complete_transaction(journal, commit_tid);
 			filemap_write_and_wait(&inode->i_data);
 		}
 		truncate_inode_pages_final(&inode->i_data);
@@ -2929,7 +2929,7 @@ retry:
 			 * free blocks released in the transaction
 			 * and try again
 			 */
-			jbd2_journal_force_commit_nested(sbi->s_journal);
+			jbd2_vmsep_journal_force_commit_nested(sbi->s_journal);
 			ret = 0;
 			continue;
 		}
@@ -3309,9 +3309,9 @@ static sector_t ext4_bmap(struct address_space *mapping, sector_t block)
 
 		ext4_clear_inode_state(inode, EXT4_STATE_JDATA);
 		journal = EXT4_JOURNAL(inode);
-		jbd2_journal_lock_updates(journal);
-		err = jbd2_journal_flush(journal);
-		jbd2_journal_unlock_updates(journal);
+		jbd2_vmsep_journal_lock_updates(journal);
+		err = jbd2_vmsep_journal_flush(journal);
+		jbd2_vmsep_journal_unlock_updates(journal);
 
 		if (err)
 			return 0;
@@ -3374,7 +3374,7 @@ static int __ext4_journalled_invalidatepage(struct page *page,
 	if (offset == 0 && length == PAGE_SIZE)
 		ClearPageChecked(page);
 
-	return jbd2_journal_invalidatepage(journal, page, offset, length);
+	return jbd2_vmsep_journal_invalidatepage(journal, page, offset, length);
 }
 
 /* Wrapper for aops... */
@@ -3395,7 +3395,7 @@ static int ext4_releasepage(struct page *page, gfp_t wait)
 	if (PageChecked(page))
 		return 0;
 	if (journal)
-		return jbd2_journal_try_to_free_buffers(journal, page, wait);
+		return jbd2_vmsep_journal_try_to_free_buffers(journal, page, wait);
 	else
 		return try_to_free_buffers(page);
 }
@@ -4296,7 +4296,7 @@ int ext4_inode_attach_jinode(struct inode *inode)
 			return -ENOMEM;
 		}
 		ei->jinode = jinode;
-		jbd2_journal_init_jbd_inode(ei->jinode, inode);
+		jbd2_vmsep_journal_init_jbd_inode(ei->jinode, inode);
 		jinode = NULL;
 	}
 	spin_unlock(&inode->i_lock);
@@ -5288,7 +5288,7 @@ static void ext4_wait_for_tail_page_commit(struct inode *inode)
 			commit_tid = journal->j_committing_transaction->t_tid;
 		read_unlock(&journal->j_state_lock);
 		if (commit_tid)
-			jbd2_log_wait_commit(journal, commit_tid);
+			jbd2_vmsep_log_wait_commit(journal, commit_tid);
 	}
 }
 
@@ -5765,8 +5765,8 @@ static int ext4_try_to_expand_extra_isize(struct inode *inode,
 	 * force a large enough s_min_extra_isize.
 	 */
 	if (ext4_handle_valid(handle) &&
-	    jbd2_journal_extend(handle,
-				EXT4_DATA_TRANS_BLOCKS(inode->i_sb)) != 0)
+	    jbd2_vmsep_journal_extend(handle,
+				      EXT4_DATA_TRANS_BLOCKS(inode->i_sb)) != 0)
 		return -ENOSPC;
 
 	if (ext4_write_trylock_xattr(inode, &no_expand) == 0)
@@ -5906,7 +5906,7 @@ static int ext4_pin_inode(handle_t *handle, struct inode *inode)
 		err = ext4_get_inode_loc(inode, &iloc);
 		if (!err) {
 			BUFFER_TRACE(iloc.bh, "get_write_access");
-			err = jbd2_journal_get_write_access(handle, iloc.bh);
+			err = jbd2_vmsep_journal_get_write_access(handle, iloc.bh);
 			if (!err)
 				err = ext4_handle_dirty_metadata(handle,
 								 NULL,
@@ -5965,7 +5965,7 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
 	}
 
 	percpu_down_write(&sbi->s_journal_flag_rwsem);
-	jbd2_journal_lock_updates(journal);
+	jbd2_vmsep_journal_lock_updates(journal);
 
 	/*
 	 * OK, there are no updates running now, and all cached data is
@@ -5978,9 +5978,9 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
 	if (val)
 		ext4_set_inode_flag(inode, EXT4_INODE_JOURNAL_DATA);
 	else {
-		err = jbd2_journal_flush(journal);
+		err = jbd2_vmsep_journal_flush(journal);
 		if (err < 0) {
-			jbd2_journal_unlock_updates(journal);
+			jbd2_vmsep_journal_unlock_updates(journal);
 			percpu_up_write(&sbi->s_journal_flag_rwsem);
 			ext4_inode_resume_unlocked_dio(inode);
 			return err;
@@ -5994,7 +5994,7 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
 	 */
 	ext4_set_inode_flags(inode);
 
-	jbd2_journal_unlock_updates(journal);
+	jbd2_vmsep_journal_unlock_updates(journal);
 	percpu_up_write(&sbi->s_journal_flag_rwsem);
 
 	if (val)

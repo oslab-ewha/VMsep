@@ -34,7 +34,7 @@ typedef enum {
 	ptr_ext4_super_block_offset,
 } attr_ptr_t;
 
-static const char proc_dirname[] = "fs/ext4";
+static const char proc_dirname[] = "fs/ext4_vmsep";
 static struct proc_dir_entry *ext4_proc_root;
 
 struct ext4_attr {
@@ -426,7 +426,7 @@ int __init ext4_init_sysfs(void)
 {
 	int ret;
 
-	kobject_set_name(&ext4_kset.kobj, "ext4");
+	kobject_set_name(&ext4_kset.kobj, "ext4_vmsep");
 	ext4_kset.kobj.parent = fs_kobj;
 	ret = kset_register(&ext4_kset);
 	if (ret)

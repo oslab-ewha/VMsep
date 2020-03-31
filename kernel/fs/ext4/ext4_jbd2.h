@@ -327,7 +327,7 @@ handle_t *__ext4_journal_start_reserved(handle_t *handle, unsigned int line,
 static inline void ext4_journal_free_reserved(handle_t *handle)
 {
 	if (ext4_handle_valid(handle))
-		jbd2_journal_free_reserved(handle);
+		jbd2_vmsep_journal_free_reserved(handle);
 }
 
 static inline handle_t *ext4_journal_current_handle(void)
@@ -338,28 +338,28 @@ static inline handle_t *ext4_journal_current_handle(void)
 static inline int ext4_journal_extend(handle_t *handle, int nblocks)
 {
 	if (ext4_handle_valid(handle))
-		return jbd2_journal_extend(handle, nblocks);
+		return jbd2_vmsep_journal_extend(handle, nblocks);
 	return 0;
 }
 
 static inline int ext4_journal_restart(handle_t *handle, int nblocks)
 {
 	if (ext4_handle_valid(handle))
-		return jbd2_journal_restart(handle, nblocks);
+		return jbd2_vmsep_journal_restart(handle, nblocks);
 	return 0;
 }
 
 static inline int ext4_journal_blocks_per_page(struct inode *inode)
 {
 	if (EXT4_JOURNAL(inode) != NULL)
-		return jbd2_journal_blocks_per_page(inode);
+		return jbd2_vmsep_journal_blocks_per_page(inode);
 	return 0;
 }
 
 static inline int ext4_journal_force_commit(journal_t *journal)
 {
 	if (journal)
-		return jbd2_journal_force_commit(journal);
+		return jbd2_vmsep_journal_force_commit(journal);
 	return 0;
 }
 
@@ -367,8 +367,8 @@ static inline int ext4_jbd2_inode_add_write(handle_t *handle,
 					    struct inode *inode)
 {
 	if (ext4_handle_valid(handle))
-		return jbd2_journal_inode_add_write(handle,
-						    EXT4_I(inode)->jinode);
+		return jbd2_vmsep_journal_inode_add_write(handle,
+							  EXT4_I(inode)->jinode);
 	return 0;
 }
 
@@ -376,8 +376,8 @@ static inline int ext4_jbd2_inode_add_wait(handle_t *handle,
 					   struct inode *inode)
 {
 	if (ext4_handle_valid(handle))
-		return jbd2_journal_inode_add_wait(handle,
-						   EXT4_I(inode)->jinode);
+		return jbd2_vmsep_journal_inode_add_wait(handle,
+							 EXT4_I(inode)->jinode);
 	return 0;
 }
 
