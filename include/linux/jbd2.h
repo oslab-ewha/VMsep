@@ -690,6 +690,11 @@ struct transaction_s
 	int			t_need_data_flush;
 
 	/*
+	 * transaction list associated with the same VM
+	 */
+	struct list_head	t_same_vm_list;
+
+	/*
 	 * For use by the filesystem to store fs-specific data
 	 * structures associated with the transaction
 	 */

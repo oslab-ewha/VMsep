@@ -65,6 +65,8 @@
  */
 #undef EXT4FS_DEBUG
 
+#define N_MAX_VM_INODES	10
+
 /*
  * Debug code
  */
@@ -1528,6 +1530,10 @@ struct ext4_sb_info {
 
 	/* Barrier between changing inodes' journal flags and writepages ops. */
 	struct percpu_rw_semaphore s_journal_flag_rwsem;
+
+	/* inodes tracked by VMsep */
+	unsigned long	VM_inodes[N_MAX_VM_INODES];
+	int	n_VM_inodes;
 };
 
 static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
@@ -2569,6 +2575,7 @@ extern int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count);
 
 /* super.c */
 extern int ext4_seq_options_show(struct seq_file *seq, void *offset);
+extern int ext4_seq_inodes_show(struct seq_file *seq, void *offset);
 extern int ext4_calculate_overhead(struct super_block *sb);
 extern void ext4_superblock_csum_set(struct super_block *sb);
 extern void *ext4_kvmalloc(size_t size, gfp_t flags);

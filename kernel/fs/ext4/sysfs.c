@@ -374,6 +374,38 @@ static const struct file_operations ext4_seq_##name##_fops = { \
 
 PROC_FILE_SHOW_DEFN(es_shrinker_info);
 PROC_FILE_SHOW_DEFN(options);
+PROC_FILE_SHOW_DEFN(inodes);
+
+static ssize_t
+ext4_proc_inodes_write(struct file *file, const char __user *buf, size_t count, loff_t *off)
+{
+	ssize_t	res;
+	int	ino;
+
+	res = sscanf(buf, "%d", &ino);
+	if (res == 1) {
+		struct seq_file	*seq = file->private_data;
+		struct super_block	*sb = seq->private;
+		struct ext4_sb_info *sbi = EXT4_SB(sb);
+
+		if (sbi->n_VM_inodes >= N_MAX_VM_INODES) {
+			return 0;
+		}
+		sbi->VM_inodes[sbi->n_VM_inodes] = ino;
+		sbi->n_VM_inodes++;
+
+		return count;
+	}
+	return 0;
+}
+
+static const struct file_operations ext4_inodes_fops = {
+	.open = inodes_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+	.write = ext4_proc_inodes_write
+};
 
 static const struct ext4_proc_files {
 	const char *name;
@@ -382,6 +414,7 @@ static const struct ext4_proc_files {
 	PROC_FILE_LIST(options),
 	PROC_FILE_LIST(es_shrinker_info),
 	PROC_FILE_LIST(mb_groups),
+	{ "inodes", &ext4_inodes_fops },
 	{ NULL, NULL },
 };
 

@@ -2130,6 +2130,21 @@ int ext4_seq_options_show(struct seq_file *seq, void *offset)
 	return rc;
 }
 
+int ext4_seq_inodes_show(struct seq_file *seq, void *offset)
+{
+	struct super_block *sb = seq->private;
+	struct ext4_sb_info *sbi = EXT4_SB(sb);
+	int	i;
+
+	for (i = 0; i < sbi->n_VM_inodes; i++) {
+		char	buf[256];
+		snprintf(buf, 256, "%ld ", sbi->VM_inodes[i]);
+		seq_puts(seq, buf);
+	}
+	seq_puts(seq, "\n");
+	return 0;
+}
+
 static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
 			    int read_only)
 {
@@ -4366,6 +4381,9 @@ no_journal:
 	ratelimit_state_init(&sbi->s_warning_ratelimit_state, 5 * HZ, 10);
 	ratelimit_state_init(&sbi->s_msg_ratelimit_state, 5 * HZ, 10);
 
+	sbi->n_VM_inodes = 0;
+	memset(sbi->VM_inodes, 0, sizeof(unsigned long) * N_MAX_VM_INODES);
+
 	kfree(orig_data);
 	return 0;
 
@@ -4462,6 +4480,7 @@ static void ext4_init_journal_params(struct super_block *sb, journal_t *journal)
 		journal->j_flags |= JBD2_ABORT_ON_SYNCDATA_ERR;
 	else
 		journal->j_flags &= ~JBD2_ABORT_ON_SYNCDATA_ERR;
+
 	write_unlock(&journal->j_state_lock);
 }
 
