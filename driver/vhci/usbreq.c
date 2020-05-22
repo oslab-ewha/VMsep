@@ -34,7 +34,7 @@ build_setup_packet(usb_cspkt_t *csp, unsigned char direct_in, unsigned char type
 }
 
 struct urb_req *
-find_sent_urbr(pusbip_vpdo_dev_t vpdo, struct usbip_header *hdr)
+find_sent_urbr(pvpdo_dev_t vpdo, struct usbip_header *hdr)
 {
 	KIRQL		oldirql;
 	PLIST_ENTRY	le;
@@ -56,7 +56,7 @@ find_sent_urbr(pusbip_vpdo_dev_t vpdo, struct usbip_header *hdr)
 }
 
 struct urb_req *
-find_pending_urbr(pusbip_vpdo_dev_t vpdo)
+find_pending_urbr(pvpdo_dev_t vpdo)
 {
 	struct urb_req	*urbr;
 
@@ -70,7 +70,7 @@ find_pending_urbr(pusbip_vpdo_dev_t vpdo)
 }
 
 static void
-submit_urbr_unlink(pusbip_vpdo_dev_t vpdo, unsigned long seq_num_unlink)
+submit_urbr_unlink(pvpdo_dev_t vpdo, unsigned long seq_num_unlink)
 {
 	struct urb_req	*urbr_unlink;
 
@@ -85,7 +85,7 @@ submit_urbr_unlink(pusbip_vpdo_dev_t vpdo, unsigned long seq_num_unlink)
 }
 
 static void
-remove_cancelled_urbr(pusbip_vpdo_dev_t vpdo, struct urb_req *urbr)
+remove_cancelled_urbr(pvpdo_dev_t vpdo, struct urb_req *urbr)
 {
 	KIRQL	oldirql;
 
@@ -111,13 +111,13 @@ cancel_urbr(PDEVICE_OBJECT devobj, PIRP irp)
 {
 	UNREFERENCED_PARAMETER(devobj);
 
-	pusbip_vpdo_dev_t	vpdo;
+	pvpdo_dev_t	vpdo;
 	struct urb_req	*urbr;
 
-	vpdo = (pusbip_vpdo_dev_t)irp->Tail.Overlay.DriverContext[0];
+	vpdo = (pvpdo_dev_t)irp->Tail.Overlay.DriverContext[0];
 	urbr = (struct urb_req *)irp->Tail.Overlay.DriverContext[1];
 
-	vpdo = (pusbip_vpdo_dev_t)devobj->DeviceExtension;
+	vpdo = (pvpdo_dev_t)devobj->DeviceExtension;
 	DBGI(DBG_GENERAL, "irp will be cancelled: %s\n", dbg_urbr(urbr));
 	IoReleaseCancelSpinLock(irp->CancelIrql);
 
@@ -129,7 +129,7 @@ cancel_urbr(PDEVICE_OBJECT devobj, PIRP irp)
 }
 
 struct urb_req *
-create_urbr(pusbip_vpdo_dev_t vpdo, PIRP irp, unsigned long seq_num_unlink)
+create_urbr(pvpdo_dev_t vpdo, PIRP irp, unsigned long seq_num_unlink)
 {
 	struct urb_req	*urbr;
 
@@ -193,7 +193,7 @@ is_port_urbr(struct urb_req *urbr, unsigned char epaddr)
 }
 
 NTSTATUS
-submit_urbr(pusbip_vpdo_dev_t vpdo, struct urb_req *urbr)
+submit_urbr(pvpdo_dev_t vpdo, struct urb_req *urbr)
 {
 	KIRQL	oldirql;
 	KIRQL	oldirql_cancel;
