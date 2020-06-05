@@ -188,7 +188,7 @@ vpdo_get_nodeconn_info_ex_v2(pvpdo_dev_t vpdo, PUSB_NODE_CONNECTION_INFORMATION_
 	conninfo->Flags.DeviceIsOperatingAtSuperSpeedPlusOrHigher = FALSE;
 	conninfo->Flags.DeviceIsSuperSpeedPlusCapableOrHigher = FALSE;
 
-	*poutlen = sizeof(PUSB_NODE_CONNECTION_INFORMATION_EX_V2);
+	*poutlen = sizeof(USB_NODE_CONNECTION_INFORMATION_EX_V2);
 
 	return STATUS_SUCCESS;
 }

@@ -77,8 +77,8 @@ get_nodeconn_info_ex(pvhub_dev_t vhub, PVOID buffer, ULONG inlen, PULONG poutlen
 	pvpdo_dev_t	vpdo;
 	NTSTATUS	status;
 
-	if (inlen < sizeof(PUSB_NODE_CONNECTION_INFORMATION_EX)) {
-		*poutlen = sizeof(PUSB_NODE_CONNECTION_INFORMATION_EX);
+	if (inlen < sizeof(USB_NODE_CONNECTION_INFORMATION_EX) || *poutlen < sizeof(USB_NODE_CONNECTION_INFORMATION_EX)) {
+		*poutlen = sizeof(USB_NODE_CONNECTION_INFORMATION_EX);
 		return STATUS_BUFFER_TOO_SMALL;
 	}
 	if (conninfo->ConnectionIndex > vhub->n_max_ports)
@@ -97,8 +97,8 @@ get_nodeconn_info_ex_v2(pvhub_dev_t vhub, PVOID buffer, ULONG inlen, PULONG pout
 	pvpdo_dev_t	vpdo;
 	NTSTATUS	status;
 
-	if (inlen < sizeof(PUSB_NODE_CONNECTION_INFORMATION_EX_V2)) {
-		*poutlen = sizeof(PUSB_NODE_CONNECTION_INFORMATION_EX_V2);
+	if (inlen < sizeof(USB_NODE_CONNECTION_INFORMATION_EX_V2) || *poutlen < sizeof(USB_NODE_CONNECTION_INFORMATION_EX_V2)) {
+		*poutlen = sizeof(USB_NODE_CONNECTION_INFORMATION_EX_V2);
 		return STATUS_BUFFER_TOO_SMALL;
 	}
 	if (conninfo->ConnectionIndex > vhub->n_max_ports)
