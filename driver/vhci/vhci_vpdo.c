@@ -179,10 +179,10 @@ vpdo_get_nodeconn_info_ex_v2(pvpdo_dev_t vpdo, PUSB_NODE_CONNECTION_INFORMATION_
 {
 	UNREFERENCED_PARAMETER(vpdo);
 
-	conninfo->SupportedUsbProtocols.ul = 0xffffffff;
-	if (conninfo->SupportedUsbProtocols.Usb300)
-		conninfo->SupportedUsbProtocols.Usb300 = FALSE;
-	conninfo->Flags.ul = 0xffffffff;
+	conninfo->SupportedUsbProtocols.ul = 0;
+	conninfo->SupportedUsbProtocols.Usb110 = TRUE;
+	conninfo->SupportedUsbProtocols.Usb200 = TRUE;
+	conninfo->Flags.ul = 0;
 	conninfo->Flags.DeviceIsOperatingAtSuperSpeedOrHigher = FALSE;
 	conninfo->Flags.DeviceIsSuperSpeedCapableOrHigher = FALSE;
 	conninfo->Flags.DeviceIsOperatingAtSuperSpeedPlusOrHigher = FALSE;
