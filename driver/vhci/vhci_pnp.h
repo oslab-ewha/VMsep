@@ -7,14 +7,11 @@
         (_Data_)->common.DevicePnPState =  NotStarted;\
         (_Data_)->common.PreviousPnPState = NotStarted;
 
-#define SET_NEW_PNP_STATE(_Data_, _state_) \
-        (_Data_)->common.PreviousPnPState =  (_Data_)->common.DevicePnPState;\
-        (_Data_)->common.DevicePnPState = (_state_);
+#define SET_NEW_PNP_STATE(vdev, _state_) \
+        do { (vdev)->PreviousPnPState = (vdev)->DevicePnPState;\
+        (vdev)->DevicePnPState = (_state_); } while (0)
 
-#define RESTORE_PREVIOUS_PNP_STATE(_Data_)   \
-        (_Data_)->common.DevicePnPState =   (_Data_)->common.PreviousPnPState;
+#define RESTORE_PREVIOUS_PNP_STATE(vdev)   \
+        do { (vdev)->DevicePnPState = (vdev)->PreviousPnPState; } while (0)
 
 extern PAGEABLE NTSTATUS vhci_unplug_port(pvhci_dev_t vhci, ULONG port);
-extern PAGEABLE NTSTATUS vhci_eject_port(pvhci_dev_t vhci, ULONG port);
-
-extern NTSTATUS vdev_query_device_text(pvdev_t vdev, PIRP irp);

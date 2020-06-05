@@ -1,7 +1,12 @@
 #include "vhci.h"
 
 #include <wdmguid.h>
+#include <usbdi.h>
 #include <usbbusif.h>
+
+#include "usbip_proto.h"
+#include "vhci_dev.h"
+#include "vhci_irp.h"
 
 static VOID
 ref_interface(__in PVOID Context)
@@ -177,6 +182,8 @@ query_interface_location(pvdev_t vdev, USHORT size, USHORT version, PINTERFACE i
 {
 	PNP_LOCATION_INTERFACE		*intf_loc = (PNP_LOCATION_INTERFACE *)intf;
 
+	UNREFERENCED_PARAMETER(version);
+
 	if (size < sizeof(PNP_LOCATION_INTERFACE)) {
 		DBGW(DBG_GENERAL, "unsupported pnp location interface version: %d", version);
 		return STATUS_INVALID_PARAMETER;
@@ -193,25 +200,28 @@ query_interface_location(pvdev_t vdev, USHORT size, USHORT version, PINTERFACE i
 }
 
 PAGEABLE NTSTATUS
-vdev_query_interface(pvdev_t vdev, PIO_STACK_LOCATION irpstack)
+pnp_query_interface(pvdev_t vdev, PIRP irp, PIO_STACK_LOCATION irpstack)
 {
-	GUID	*intf_type;
+	GUID *intf_type;
 	PINTERFACE	intf;
 	USHORT	size, version;
+	NTSTATUS	status;
 
 	PAGED_CODE();
 
-	intf_type = (GUID*)irpstack->Parameters.QueryInterface.InterfaceType;
+	intf_type = (GUID *)irpstack->Parameters.QueryInterface.InterfaceType;
 	size = irpstack->Parameters.QueryInterface.Size;
 	version = irpstack->Parameters.QueryInterface.Version;
 	intf = irpstack->Parameters.QueryInterface.Interface;
 	if (IsEqualGUID(intf_type, (PVOID)& GUID_PNP_LOCATION_INTERFACE)) {
-		return query_interface_location(vdev, size, version, intf);
+		status = query_interface_location(vdev, size, version, intf);
 	}
-	else if (IsEqualGUID(intf_type, (PVOID)&USB_BUS_INTERFACE_USBDI_GUID) && vdev->type == VDEV_VPDO) {
-		return query_interface_usbdi((pvpdo_dev_t)vdev, size, version, intf);
+	else if (IsEqualGUID(intf_type, (PVOID)& USB_BUS_INTERFACE_USBDI_GUID) && vdev->type == VDEV_VPDO) {
+		status = query_interface_usbdi((pvpdo_dev_t)vdev, size, version, intf);
 	}
-	DBGW(DBG_GENERAL, "Query unknown interface GUID: %s\n", dbg_GUID(intf_type));
-
-	return STATUS_NOT_SUPPORTED;
+	else {
+		DBGW(DBG_GENERAL, "Query unknown interface GUID: %s\n", dbg_GUID(intf_type));
+		status = STATUS_NOT_SUPPORTED;
+	}
+	return irp_done(irp, status);
 }

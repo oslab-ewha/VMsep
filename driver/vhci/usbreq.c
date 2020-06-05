@@ -1,7 +1,6 @@
 #include "vhci.h"
 
 #include "usbip_proto.h"
-#include "usbip_vhci_api.h"
 #include "usbreq.h"
 
 extern NTSTATUS

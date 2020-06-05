@@ -147,6 +147,10 @@ const char *
 dbg_vdev_type(vdev_type_t type)
 {
 	switch (type) {
+	case VDEV_ROOT:
+		return "root";
+	case VDEV_CPDO:
+		return "cpdo";
 	case VDEV_VHCI:
 		return "vhci";
 	case VDEV_HPDO:

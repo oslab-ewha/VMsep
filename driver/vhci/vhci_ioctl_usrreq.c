@@ -1,6 +1,9 @@
 #include "vhci.h"
 
+#include <usbdi.h>
 #include <usbuser.h>
+
+#include "vhci_dev.h"
 
 static PAGEABLE NTSTATUS
 get_power_info(PVOID buffer, ULONG inlen, PULONG poutlen)

@@ -18,10 +18,13 @@
 #define DBG_POWER	0x0040
 #define DBG_WMI		0x0080
 #define DBG_URB		0x0100
-#define DBG_VHCI	0x0200
-#define DBG_HPDO	0x0400
-#define DBG_VHUB	0x0800
-#define DBG_VPDO	0x1000
+#define DBG_VDEV	0x0200
+#define DBG_ROOT	0x0400
+#define DBG_VHCI	0x0800
+#define DBG_CPDO	0x1000
+#define DBG_HPDO	0x2000
+#define DBG_VHUB	0x4000
+#define DBG_VPDO	0x8000
 
 extern const char *dbg_GUID(GUID *guid);
 

@@ -8,16 +8,24 @@
 #define IS_DEVOBJ_VHCI(devobj)	(((pvdev_t)(devobj)->DeviceExtension)->type == VDEV_VHCI)
 #define IS_DEVOBJ_VPDO(devobj)	(((pvdev_t)(devobj)->DeviceExtension)->type == VDEV_VPDO)
 
-#define DEVOBJ_TO_VDEV(devobj)	(pvdev_t)((devobj)->DeviceExtension)
+#define DEVOBJ_TO_VDEV(devobj)	((pvdev_t)((devobj)->DeviceExtension))
 #define DEVOBJ_VDEV_TYPE(devobj)	(((pvdev_t)((devobj)->DeviceExtension))->type)
-#define DEVOBJ_TO_VHCI(devobj)	(pvhci_dev_t)((devobj)->DeviceExtension)
-#define DEVOBJ_TO_HPDO(devobj)	(phpdo_dev_t)((devobj)->DeviceExtension)
-#define DEVOBJ_TO_VHUB(devobj)	(pvhub_dev_t)((devobj)->DeviceExtension)
-#define DEVOBJ_TO_VPDO(devobj)	(pvpdo_dev_t)((devobj)->DeviceExtension)
+#define DEVOBJ_TO_CPDO(devobj)	((pcpdo_dev_t)((devobj)->DeviceExtension))
+#define DEVOBJ_TO_VHCI(devobj)	((pvhci_dev_t)((devobj)->DeviceExtension))
+#define DEVOBJ_TO_HPDO(devobj)	((phpdo_dev_t)((devobj)->DeviceExtension))
+#define DEVOBJ_TO_VHUB(devobj)	((pvhub_dev_t)((devobj)->DeviceExtension))
+#define DEVOBJ_TO_VPDO(devobj)	((pvpdo_dev_t)((devobj)->DeviceExtension))
 
 #define TO_DEVOBJ(vdev)		((vdev)->common.Self)
 
-#define HWID_VDEV	L"USBIPWIN\\vdev"
+#define VHUB_FROM_VHCI(vhci)	((pvhub_dev_t)(vhci)->common.child_pdo ? (pvhub_dev_t)(vhci)->common.child_pdo->fdo: NULL)
+#define VHUB_FROM_VPDO(vpdo)	((pvhub_dev_t)(vpdo)->common.parent)
+
+#define IS_FDO(type)		((type) == VDEV_ROOT || (type) == VDEV_VHCI || (type) == VDEV_VHUB)
+
+#define HWID_ROOT	L"USBIPWIN\\root"
+#define HWID_VHCI	L"USBIPWIN\\vhci"
+#define HWID_VHUB	L"USB\\ROOT_HUB&VID1209&PID8250&REV0000"
 
 extern LPCWSTR devcodes[];
 
@@ -43,6 +51,8 @@ typedef struct _USBIP_BUS_WMI_STD_DATA
 } USBIP_BUS_WMI_STD_DATA, *PUSBIP_BUS_WMI_STD_DATA;
 
 typedef enum {
+	VDEV_ROOT,
+	VDEV_CPDO,
 	VDEV_VHCI,
 	VDEV_HPDO,
 	VDEV_VHUB,
@@ -50,7 +60,7 @@ typedef enum {
 } vdev_type_t;
 
 // A common header for the device extensions of the vhub and vpdo
-typedef struct {
+typedef struct _vdev {
 	// A back pointer to the device object for which this is the extension
 	PDEVICE_OBJECT	Self;
 
@@ -68,22 +78,32 @@ typedef struct {
 
 	// Stores current device power state
 	DEVICE_POWER_STATE	DevicePowerState;
+
+
+	// root and vhci have cpdo and hpdo each
+	struct _vdev	*child_pdo, *parent, *fdo;
+	PDEVICE_OBJECT	pdo;
+	PDEVICE_OBJECT	devobj_lower;
 } vdev_t, *pvdev_t;
 
 struct urb_req;
+struct _cpdo;
 struct _vhub;
 struct _hpdo;
 
 typedef struct
 {
 	vdev_t	common;
+} root_dev_t, *proot_dev_t;
 
-	PDEVICE_OBJECT	UnderlyingPDO;
+typedef struct _cpdo
+{
+	vdev_t	common;
+} cpdo_dev_t, *pcpdo_dev_t;
 
-	PDEVICE_OBJECT	devobj_lower;
-
-	struct _vhub	*vhub;
-	struct _hpdo	*hpdo;
+typedef struct
+{
+	vdev_t	common;
 
 	UNICODE_STRING	DevIntfVhci;
 	UNICODE_STRING	DevIntfUSBHC;
@@ -97,18 +117,12 @@ typedef struct
 typedef struct _hpdo
 {
 	vdev_t	common;
-
-	pvhci_dev_t	vhci;
-
-	UNICODE_STRING	DevIntfRootHub;
 } hpdo_dev_t, *phpdo_dev_t;
 
 // The device extension of the vhub.  From whence vpdo's are born.
 typedef struct _vhub
 {
 	vdev_t	common;
-
-	pvhci_dev_t	vhci;
 
 	// List of vpdo's created so far
 	LIST_ENTRY	head_vpdo;
@@ -125,14 +139,12 @@ typedef struct _vhub
 	// The number of IRPs sent from the bus to the underlying device object
 	LONG		OutstandingIO; // Biased to 1
 
+	UNICODE_STRING	DevIntfRootHub;
+
 	// On remove device plug & play request we must wait until all outstanding
 	// requests have been completed before we can actually delete the device
 	// object. This event is when the Outstanding IO count goes to zero
 	KEVENT		RemoveEvent;
-	// This event is set when the Outstanding IO count goes to 1.
-	KEVENT		StopEvent;
-
-	PDEVICE_OBJECT	devobj_lower;
 } vhub_dev_t, *pvhub_dev_t;
 
 // The device extension for the vpdo.
@@ -140,9 +152,6 @@ typedef struct _vhub
 typedef struct
 {
 	vdev_t	common;
-
-	// A back reference to vhub
-	pvhub_dev_t	vhub;
 
 	// An array of (zero terminated wide character strings).
 	// The array itself also null terminated
@@ -161,9 +170,6 @@ typedef struct
 	// and set to FALSE when a UnPlug IOCTL is received.
 	BOOLEAN		plugged;
 
-	// We will delete the vpdo in IRP_MN_REMOVE only after we have reported
-	// to the Plug and Play manager that it's missing.
-	BOOLEAN		ReportedMissing;
 	UCHAR	speed;
 	UCHAR	unused; /* 4 bytes alignment */
 
@@ -190,14 +196,15 @@ typedef struct
 } vpdo_dev_t, *pvpdo_dev_t;
 
 PDEVICE_OBJECT
-vdev_create(pvhci_dev_t vhci, vdev_type_t type);
+vdev_create(PDRIVER_OBJECT drvobj, vdev_type_t type);
 
 void vdev_add_ref(pvdev_t vdev);
 void vdev_del_ref(pvdev_t vdev);
 
 pvpdo_dev_t vhub_find_vpdo(pvhub_dev_t vhub, unsigned port);
 
-extern PAGEABLE NTSTATUS destroy_vpdo(pvpdo_dev_t vpdo);
+void
+vhub_mark_unplugged_vpdo(pvhub_dev_t vhub, pvpdo_dev_t vpdo);
 
 LPWSTR
 get_device_prop(PDEVICE_OBJECT pdo, DEVICE_REGISTRY_PROPERTY prop, PULONG plen);

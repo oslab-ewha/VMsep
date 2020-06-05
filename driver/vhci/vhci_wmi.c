@@ -74,13 +74,13 @@ vhci_system_control(__in PDEVICE_OBJECT devobj, __in PIRP irp)
 		// This irp is either not a WMI irp or is a WMI irp targetted
 		// at a device lower in the stack.
 		IoSkipCurrentIrpStackLocation(irp);
-		status = IoCallDriver(vhci->devobj_lower, irp);
+		status = IoCallDriver(vhci->common.devobj_lower, irp);
 		break;
 	default:
 		// We really should never get here, but if we do just forward....
 		ASSERT(FALSE);
 		IoSkipCurrentIrpStackLocation(irp);
-		status = IoCallDriver(vhci->devobj_lower, irp);
+		status = IoCallDriver(vhci->common.devobj_lower, irp);
 		break;
 	}
 
@@ -211,7 +211,7 @@ vhci_QueryWmiRegInfo(__in PDEVICE_OBJECT devobj, __out ULONG *RegFlags, __out PU
 
 	*RegFlags = WMIREG_FLAG_INSTANCE_PDO;
 	*RegistryPath = &Globals.RegistryPath;
-	*Pdo = vhci->UnderlyingPDO;
+	*Pdo = vhci->common.pdo;
 	RtlInitUnicodeString(MofResourceName, MOFRESOURCENAME);
 
 	return STATUS_SUCCESS;

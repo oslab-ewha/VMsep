@@ -23,16 +23,22 @@
     <ClCompile Include="vhci_dbg.c" />
     <ClCompile Include="vhci_dev.c" />
     <ClCompile Include="vhci_devconf.c" />
-    <ClCompile Include="vhci_hpdo.c" />
+    <ClCompile Include="vhci_internal_ioctl.c" />
     <ClCompile Include="vhci_ioctl.c" />
     <ClCompile Include="vhci_ioctl_usrreq.c" />
+    <ClCompile Include="vhci_ioctl_vhci.c" />
+    <ClCompile Include="vhci_ioctl_vhub.c" />
     <ClCompile Include="vhci_irp.c" />
-    <ClCompile Include="vhci_pnp_hpdo.c" />
+    <ClCompile Include="vhci_pnp_add.c" />
+    <ClCompile Include="vhci_pnp_cap.c" />
+    <ClCompile Include="vhci_pnp_devtext.c" />
+    <ClCompile Include="vhci_pnp_id.c" />
     <ClCompile Include="vhci_pnp_intf.c" />
-    <ClCompile Include="vhci_pnp_vhci.c" />
-    <ClCompile Include="vhci_pnp_vhub.c" />
+    <ClCompile Include="vhci_pnp_relations.c" />
+    <ClCompile Include="vhci_pnp_remove.c" />
+    <ClCompile Include="vhci_pnp_resources.c" />
+    <ClCompile Include="vhci_pnp_start.c" />
     <ClCompile Include="vhci_pnp_vpdo.c" />
-    <ClCompile Include="vhci_vhci.c" />
     <ClCompile Include="vhci_vhub.c" />
     <ClCompile Include="vhci_vpdo.c" />
     <ClCompile Include="vhci_read.c" />
@@ -60,6 +66,7 @@
   </ItemGroup>
   <ItemGroup>
     <Inf Include="usbip_vhci.inf" />
+    <Inf Include="usbip_root.inf" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{F35A874E-E790-44B5-9C14-749C8854A0C4}</ProjectGuid>

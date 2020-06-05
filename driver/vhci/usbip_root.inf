@@ -5,8 +5,8 @@
 ;--*/
 [Version]
 Signature="$WINDOWS NT$"
-Class=USB
-ClassGuid={36FC9E60-C465-11CF-8056-444553540000}
+Class=System
+ClassGuid={4D36E97D-E325-11CE-BFC1-08002BE10318}
 
 Provider=%Provider%
 CatalogFile=usbip_vhci.cat
@@ -15,8 +15,7 @@ CatalogFile=usbip_vhci.cat
 %StdMfg%=Standard,NT$ARCH$
 
 [Standard.NT$ARCH$]
-%DeviceDesc%=usbip_vhci_Device, USBIPWIN\vhci
-%vhub_DeviceDesc%=usbip_vhci_Device, USB\ROOT_HUB&VID1209&PID8250&REV0000
+%DeviceDesc%=usbip_vhci_Device, USBIPWIN\root
 
 [DestinationDirs]
 DefaultDestDir = 12
@@ -36,7 +35,7 @@ CopyFiles=Drivers_Dir
 [usbip_vhci_Device.NT$ARCH$.HW]
 AddReg=usbip_vhci_Device_AddReg
 
-[usbip_vhci_Device_AddReg]                            
+[usbip_vhci_Device_AddReg]
 HKR,,DeviceCharacteristics,0x10001,0x0100         ; Use same security checks on relative opens
 
 ;-------------- Service installation
@@ -57,7 +56,7 @@ SPSVCINST_ASSOCSERVICE= 0x00000002
 Provider = "usbip-win project"
 StdMfg = "usbip-win"
 DiskId1 = "usbip-win VHCI Disk"
-DeviceDesc = "usbip-win VHCI"
+DeviceDesc = "usbip-win VHCI Root"
 vhub_DeviceDesc = "usbip-win VHUB"
 ServiceDesc = "usbip-win VHCI Service"
 DisplayClassName = "usbip-win"

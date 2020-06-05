@@ -16,7 +16,7 @@ vhci_power_vhci(pvhci_dev_t vhci, PIRP irp, PIO_STACK_LOCATION irpstack)
 	if (vhci->common.DevicePnPState == NotStarted) {
 		PoStartNextPowerIrp(irp);
 		IoSkipCurrentIrpStackLocation(irp);
-		status = PoCallDriver(vhci->devobj_lower, irp);
+		status = PoCallDriver(vhci->common.devobj_lower, irp);
 		return status;
 	}
 
@@ -30,7 +30,7 @@ vhci_power_vhci(pvhci_dev_t vhci, PIRP irp, PIO_STACK_LOCATION irpstack)
 
 	PoStartNextPowerIrp(irp);
 	IoSkipCurrentIrpStackLocation(irp);
-	status = PoCallDriver(vhci->devobj_lower, irp);
+	status = PoCallDriver(vhci->common.devobj_lower, irp);
 	return status;
 }
 

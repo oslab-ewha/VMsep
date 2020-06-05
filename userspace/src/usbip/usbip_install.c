@@ -6,294 +6,326 @@
 #include <setupapi.h>
 #include <newdev.h>
 
-#include <shlwapi.h>
+#define ROOT_DEVICE_ID	"ROOT\\USBIP\\root"
 
-#include <string.h>
-#include <assert.h>
-#include <stdio.h>
+typedef enum {
+	DRIVER_ROOT,
+	DRIVER_VHCI,
+} drv_type_t;
 
-#define BUFFER_SIZE 256
-#define STR_BUFFER_SIZE 32
+typedef struct {
+	const char	*name;
+	const char	*inf_filename;
+	const char	*hwid_inf_section;
+	const char	*hwid_inf_key;
+	const char	*hwid;
+} drv_info_t;
 
-struct usbip_install_devinfo_struct {
-	char inf_filename[STR_BUFFER_SIZE];
-	char hwid_inf_section[STR_BUFFER_SIZE];
-	char hwid_inf_key[STR_BUFFER_SIZE];
-	char devdesc_inf_section[STR_BUFFER_SIZE];  // Section in INF file in which the Device desc. is located
-	char devdesc_inf_key[STR_BUFFER_SIZE];      // Device Description / Device Name
-	char dev_instance_path[STR_BUFFER_SIZE];    // Device instance Path - needed for reinstall feature
+static drv_info_t	drv_infos[] = {
+	{ "root", "usbip_root.inf", "Standard.NTamd64", "usbip-win VHCI Root", "USBIPWIN\\root\0" },
+	{ "vhci", "usbip_vhci.inf", "Standard.NTamd64", "usbip-win VHCI", "USBIPWIN\\vhci" }
 };
 
-enum {
-	DEVICE_LIST_VHCI_DRIVER = 0,
-};
-
-static struct usbip_install_devinfo_struct device_list[] = {
-	{
-		.inf_filename        = "usbip_vhci.inf",
-		.hwid_inf_section    = "Standard.NTamd64",
-		.hwid_inf_key        = "usbip-win VHCI",
-		.devdesc_inf_section = "Strings",
-		.devdesc_inf_key     = "DeviceDesc",
-		.dev_instance_path   = "ROOT\\USBIP\\0000"
-	}
-};
-
-static const char usbip_install_usage_string[] =
-"usbip install\n"
-"    install or reinstall usbip VHCI driver\n";
-
-void usbip_install_usage(void)
+void
+usbip_install_usage(void)
 {
-	printf("usage: %s", usbip_install_usage_string);
+	printf(
+"usage: usbip install\n"
+"    install or reinstall usbip VHCI drivers\n"
+	);
 }
 
-static BOOL usbip_install_get_inf_path(char *inf_path_buffer, DWORD buffer_size,
-		const struct usbip_install_devinfo_struct *dev_data) {
-	HRESULT result = GetModuleFileName(NULL, inf_path_buffer, buffer_size - 1);
-	if (!result) {
-		return FALSE;
-	}
-	result = PathRemoveFileSpec(inf_path_buffer);
-	if (!result) {
-		return FALSE;
-	}
-	result = PathAppend(inf_path_buffer, dev_data->inf_filename);
-	if (!result) {
-		return FALSE;
-	}
-	return TRUE;
+void
+usbip_uninstall_usage(void)
+{
+	printf(
+"usage: usbip uninstall\n"
+"    uninstall usbip VHCI drivers\n"
+	);
 }
 
-static BOOL usbip_install_get_class_id(GUID *class_guid, const char *inf_path)
+static char *
+get_source_inf_path(drv_info_t *pinfo)
 {
-	char buffer[BUFFER_SIZE] = { 0 };
-	const BOOL class_ok = SetupDiGetINFClass(inf_path,
-		class_guid, buffer, BUFFER_SIZE, NULL);
-	if (!class_ok) {
-		return FALSE;
+	char	inf_path[MAX_PATH];
+	char	exe_path[MAX_PATH];
+	char	*sep;
+
+	if (GetModuleFileName(NULL, exe_path, MAX_PATH) == 0) {
+		err("failed to get a executable path");
+		return NULL;
 	}
-	return TRUE;
+	if ((sep = strrchr(exe_path, '\\')) == NULL) {
+		err("invalid executanle path: %s", exe_path);
+		return NULL;
+	}
+	*sep = '\0';
+	snprintf(inf_path, MAX_PATH, "%s\\%s", exe_path, pinfo->inf_filename);
+	return _strdup(inf_path);
 }
 
-static BOOL usbip_install_get_device_description(char *device_desc_buffer, DWORD buffer_size,
-		HINF inf_handle,
-		const struct usbip_install_devinfo_struct *dev_data)
+static BOOL
+is_driver_oem_inf(drv_info_t *pinfo, const char *inf_path)
 {
-	const BOOL ok = SetupGetLineText(NULL,
-		inf_handle,
-		dev_data->devdesc_inf_section,
-		dev_data->devdesc_inf_key,
-		device_desc_buffer, buffer_size, NULL);
-	if (!ok) {
+	HINF	hinf;
+	INFCONTEXT	ctx;
+	BOOL	found = FALSE;
+
+	hinf = SetupOpenInfFile(inf_path, NULL, INF_STYLE_WIN4, NULL);
+	if (hinf == INVALID_HANDLE_VALUE) {
+		err("cannot open inf file: %s", inf_path);
 		return FALSE;
 	}
-	return TRUE;
+
+	if (SetupFindFirstLine(hinf, pinfo->hwid_inf_section, pinfo->hwid_inf_key, &ctx)) {
+		char	hwid[32];
+		DWORD	reqsize;
+
+		if (SetupGetStringField(&ctx, 2, hwid, 32, &reqsize)) {
+			if (strcmp(hwid, pinfo->hwid) == 0)
+				found = TRUE;
+		}
+	}
+
+	SetupCloseInfFile(hinf);
+	return found;
 }
 
-static BOOL usbip_install_get_hardware_id(char *buffer, DWORD buffer_size,
-	HINF inf_handle, const struct usbip_install_devinfo_struct *dev_data)
+static char *
+get_oem_inf_pattern(void)
 {
-	assert(buffer != NULL);
-	assert(buffer_size > 0);
-	assert(inf_handle != INVALID_HANDLE_VALUE);
+	char	oem_inf_pattern[MAX_PATH];
+	char	windir[MAX_PATH];
 
-	char device_info[BUFFER_SIZE] = { 0 };
-	const BOOL ok = SetupGetLineText(NULL,
-		inf_handle,
-		dev_data->hwid_inf_section,
-		dev_data->hwid_inf_key,
-		buffer, BUFFER_SIZE, NULL);
-	if (!ok) {
-		return FALSE;
-	}
-
-	char* separator_pos = strchr(buffer, ',');
-	if (separator_pos == NULL) {
-		return FALSE;
-	}
-	// End of the string
-	if (separator_pos - buffer >= BUFFER_SIZE) {
-		return FALSE;
-	}
-
-	char* hw_id_ptr = separator_pos + 1;
-	strncpy_s(buffer, buffer_size, hw_id_ptr, buffer_size);
-
-	return TRUE;
+	if (GetWindowsDirectory(windir, MAX_PATH) == 0)
+		return NULL;
+	snprintf(oem_inf_pattern, MAX_PATH, "%s\\inf\\oem*.inf", windir);
+	return _strdup(oem_inf_pattern);
 }
 
-static BOOL usbip_install_remove_device(const struct usbip_install_devinfo_struct *dev_data)
+static char *
+get_oem_inf(drv_info_t *pinfo)
 {
-	assert(dev_data != NULL);
-	info("removing instance of %s", dev_data->dev_instance_path);
+	char	*oem_inf_pattern;
+	HANDLE	hFind;
+	WIN32_FIND_DATA	wfd;
+	char	*oem_inf_name = NULL;
 
-	HDEVINFO devinfoset = { 0 };
-	SP_DEVINFO_DATA devinfo_data = { 0 };
-	devinfo_data.cbSize = sizeof(SP_DEVINFO_DATA);
-
-	devinfoset = SetupDiCreateDeviceInfoList(NULL, NULL);
-	if (devinfoset == INVALID_HANDLE_VALUE) {
-		return FALSE;
+	oem_inf_pattern = get_oem_inf_pattern();
+	if (oem_inf_pattern == NULL) {
+		err("failed to get oem inf pattern");
+		return NULL;
 	}
 
-	// from now on use goto error so that we wont leak devinfoset
-	BOOL result_ok = result_ok = SetupDiOpenDeviceInfo(devinfoset,
-		dev_data->dev_instance_path,
-		GetConsoleWindow(),
-		0,
-		&devinfo_data);
-	if (!result_ok) {
-		err("Cannot open DeviceInfo, code %u", GetLastError());
-		goto error;
-	}
+	hFind = FindFirstFile(oem_inf_pattern, &wfd);
+	free(oem_inf_pattern);
 
-	result_ok = DiUninstallDevice(GetConsoleWindow(),
-		devinfoset,
-		&devinfo_data,
-		0, FALSE);
-	if (!result_ok) {
-		err("Cannot uninstall existing device!");
-		goto error;
-	}
-
-error:
-	SetupDiDestroyDeviceInfoList(devinfoset);
-	return result_ok;
-}
-
-static int usbip_install_base(struct usbip_install_devinfo_struct *data)
-{
-	GUID class_guid = { 0 };
-	HINF inf_handle = INVALID_HANDLE_VALUE;
-	char inf_file[BUFFER_SIZE] = { 0 };
-	char hw_id[BUFFER_SIZE] = { 0 };
-	char dev_decription[BUFFER_SIZE] = { 0 };
-	BOOL device_created = FALSE;
-
-	HDEVINFO devinfoset = { 0 };
-	SP_DEVINFO_DATA devinfo_data = { 0 };
-	BOOL result_ok = TRUE;
-	DWORD last_error = 0;
-
-	result_ok = usbip_install_get_inf_path(inf_file, BUFFER_SIZE, data);
-	if (!result_ok) {
-		err("Cannot find usbip_vhci.inf file");
-		goto error;
-	}
-
-	if (!usbip_install_get_class_id(&class_guid, inf_file)) {
-		err("Cannot obtain class id");
-		goto error;
-	}
-
-	inf_handle = SetupOpenInfFile(inf_file, NULL, INF_STYLE_WIN4, NULL);
-	if (inf_handle == INVALID_HANDLE_VALUE) {
-		err("Cannot open inf file");
-		goto error;
-	}
-	result_ok = usbip_install_get_device_description(dev_decription, BUFFER_SIZE,
-		inf_handle, data);
-	if(!result_ok) {
-		err("Cannot get Device decription");
-		goto error;
-	}
-
-	devinfoset = SetupDiCreateDeviceInfoList(&class_guid, NULL);
-	if (devinfoset == INVALID_HANDLE_VALUE) {
-		goto error;
+	if (hFind == INVALID_HANDLE_VALUE) {
+		err("failed to get oem inf: 0x%lx", GetLastError());
+		return NULL;
 	}
 
 	do {
-		memset(&devinfo_data, 0, sizeof(SP_DEVINFO_DATA));
-		devinfo_data.cbSize = sizeof(SP_DEVINFO_DATA);
-		result_ok = SetupDiCreateDeviceInfo(devinfoset,
-			data->dev_instance_path,
-			&class_guid,
-			dev_decription,
-			GetConsoleWindow(),
-			0,
-			&devinfo_data);
-		if (!result_ok) {
-			last_error = GetLastError();
-			if (last_error == ERROR_ACCESS_DENIED) {
-				err("Access Denied - make sure you are running as Administrator");
-				goto error;
-			}
-
-			if (last_error != ERROR_DEVINST_ALREADY_EXISTS) {
-				err("Cannot get DeviceInfo. Remove device manually by Device Manager, restart PC and try again");
-				goto error;
-			}
-			result_ok = usbip_install_remove_device(data);
-			if (!result_ok) {
-				err("Cannot get DeviceInfo. Remove device manually by Device Manager, restart PC and try again");
-				goto error;
-			}
-			continue;
+		if (is_driver_oem_inf(pinfo, wfd.cFileName)) {
+			oem_inf_name = _strdup(wfd.cFileName);
+			break;
 		}
-		break;
-	} while (TRUE);
+	} while (FindNextFile(hFind, &wfd));
 
-	device_created = TRUE;
-	result_ok = usbip_install_get_hardware_id(hw_id, BUFFER_SIZE - 1,
-		inf_handle, data);
-	if (!result_ok) {
-		goto error;
-	}
+	FindClose(hFind);
 
-	// We need to set HW ID for PlugAndPlay driver install
-	result_ok = SetupDiSetDeviceRegistryProperty(devinfoset,
-		&devinfo_data,
-		SPDRP_HARDWAREID,
-		hw_id, (DWORD)strlen(hw_id));
-	if (!result_ok) {
-		goto error;
-	}
-
-	result_ok = SetupDiRegisterDeviceInfo(devinfoset,
-		&devinfo_data,
-		SPRDI_FIND_DUPS, NULL, NULL, NULL);
-	if (!result_ok) {
-		goto error;
-	}
-
-	// Install driver by INF file and hardware id
-	result_ok = UpdateDriverForPlugAndPlayDevices(NULL,
-		hw_id,
-		inf_file,
-		INSTALLFLAG_FORCE,
-		FALSE);
-	if (!result_ok) {
-		last_error = GetLastError();
-		err("%s: UpdateDriverForPlugAndPlayDevices failed: status: %x", __FUNCTION__, last_error);
-		if (last_error == ERROR_NO_CATALOG_FOR_OEM_INF) {
-			err("Missing .cat file");
-		}
-		goto error;
-	}
-
-	SetupDiDestroyDeviceInfoList(devinfoset);
-	info("usbip_vhci driver installed sucessfully");
-	return 0;
-
-error:
-	err("Cannot install usbip_vhci driver");
-	SetupDiDestroyDeviceInfoList(devinfoset);
-
-	if (device_created) {
-		result_ok = usbip_install_remove_device(data);
-		if (!result_ok) {
-			err("Cannot get DeviceInfo. Remove device manually by Device Manager, restart PC and try again");
-		}
-	}
-
-	return 1;
+	return oem_inf_name;
 }
 
-int usbip_install(int argc, char *argv[])
+static BOOL
+uninstall_driver_package(drv_info_t *pinfo)
 {
-	int return_code = 0;
-	return_code = usbip_install_base(&device_list[DEVICE_LIST_VHCI_DRIVER]);
-	return return_code;
+	char *oem_inf_name;
+
+	oem_inf_name = get_oem_inf(pinfo);
+	if (oem_inf_name == NULL)
+		return TRUE;
+
+	if (!SetupUninstallOEMInf(oem_inf_name, 0, NULL)) {
+		err("failed to uninstall a old %s driver package: 0x%lx", pinfo->name, GetLastError());
+		free(oem_inf_name);
+		return FALSE;
+	}
+	free(oem_inf_name);
+
+	return TRUE;
+}
+
+static BOOL
+install_driver_package(drv_info_t *pinfo)
+{
+	char	*inf_path;
+	BOOL	res = TRUE;
+
+	inf_path = get_source_inf_path(pinfo);
+	if (inf_path == NULL)
+		return FALSE;
+
+	if (!SetupCopyOEMInf(inf_path, NULL, SPOST_PATH, 0, NULL, 0, NULL, NULL)) {
+		DWORD	err = GetLastError();
+		switch (err) {
+		case ERROR_FILE_NOT_FOUND:
+			err("usbip_%s.inf or usbip_vhci.sys file not found", pinfo->name);
+			break;
+		default:
+			err("failed to install %s driver package: err:%lx", pinfo->name, err);
+			break;
+		}
+		res = FALSE;
+	}
+	free(inf_path);
+	return res;
+}
+
+static BOOL
+uninstall_root_device(void)
+{
+	HDEVINFO	hdevinfoset;
+	SP_DEVINFO_DATA	devinfo;
+
+	hdevinfoset = SetupDiCreateDeviceInfoList(NULL, NULL);
+	if (hdevinfoset == INVALID_HANDLE_VALUE) {
+		err("failed to create devinfoset");
+		return FALSE;
+	}
+
+	memset(&devinfo, 0, sizeof(SP_DEVINFO_DATA));
+	devinfo.cbSize = sizeof(SP_DEVINFO_DATA);
+	if (!SetupDiOpenDeviceInfo(hdevinfoset, ROOT_DEVICE_ID, NULL, 0, &devinfo)) {
+		/* If there's no root device, it fails with 0xe000020b error code. */
+		SetupDiDestroyDeviceInfoList(hdevinfoset);
+		return TRUE;
+	}
+
+	if (!DiUninstallDevice(NULL, hdevinfoset, &devinfo, 0, NULL)) {
+		err("cannot uninstall root device: error: 0x%lx", GetLastError());
+		SetupDiDestroyDeviceInfoList(hdevinfoset);
+		return FALSE;
+	}
+	SetupDiDestroyDeviceInfoList(hdevinfoset);
+	return TRUE;
+}
+
+static BOOL
+create_root_devinfo(LPGUID pguid_system, HDEVINFO hdevinfoset, PSP_DEVINFO_DATA pdevinfo)
+{
+	DWORD	err;
+
+	memset(pdevinfo, 0, sizeof(SP_DEVINFO_DATA));
+	pdevinfo->cbSize = sizeof(SP_DEVINFO_DATA);
+	if (SetupDiCreateDeviceInfo(hdevinfoset, ROOT_DEVICE_ID, pguid_system, NULL, NULL, 0, pdevinfo))
+		return TRUE;
+
+	err = GetLastError();
+	switch (err) {
+	case ERROR_ACCESS_DENIED:
+		err("access denied - make sure you are running as administrator");
+		return FALSE;
+	default:
+		err("failed to create a root device info: 0x%lx", err);
+		break;
+	}
+
+	return FALSE;
+}
+
+static BOOL
+setup_guid(LPCTSTR classname, LPGUID pguid)
+{
+	DWORD	reqsize;
+
+	if (!SetupDiClassGuidsFromName(classname, pguid, 1, &reqsize)) {
+		err("failed to get System setup class");
+		return FALSE;
+	}
+	return TRUE;
+}
+
+static BOOL
+install_root_device(void)
+{
+	HDEVINFO	hdevinfoset;
+	SP_DEVINFO_DATA	devinfo;
+	GUID	guid_system;
+	const char	*hwid;
+
+	setup_guid("System", &guid_system);
+
+	hdevinfoset = SetupDiGetClassDevs(&guid_system, NULL, NULL, 0);
+	if (hdevinfoset == INVALID_HANDLE_VALUE) {
+		err("failed to create devinfoset");
+		return FALSE;
+	}
+
+	if (!create_root_devinfo(&guid_system, hdevinfoset, &devinfo)) {
+		SetupDiDestroyDeviceInfoList(hdevinfoset);
+		return FALSE;
+	}
+
+	hwid = drv_infos[DRIVER_ROOT].hwid;
+	if (!SetupDiSetDeviceRegistryProperty(hdevinfoset, &devinfo, SPDRP_HARDWAREID, hwid, (DWORD)(strlen(hwid) + 2))) {
+		err("failed to set hw id: 0x%lx", GetLastError());
+		SetupDiDestroyDeviceInfoList(hdevinfoset);
+		return FALSE;
+	}
+	if (!SetupDiCallClassInstaller(DIF_REGISTERDEVICE, hdevinfoset, &devinfo)) {
+		err("failed to register: 0x%lx", GetLastError());
+		SetupDiDestroyDeviceInfoList(hdevinfoset);
+		return FALSE;
+	}
+	if (!DiInstallDevice(NULL, hdevinfoset, &devinfo, NULL, 0, NULL)) {
+		err("failed to install: 0x%lx", GetLastError());
+		SetupDiDestroyDeviceInfoList(hdevinfoset);
+		return FALSE;
+	}
+	SetupDiDestroyDeviceInfoList(hdevinfoset);
+	return TRUE;
+}
+
+int
+usbip_install(int argc, char *argv[])
+{
+	/* remove first if vhci driver package already exists */
+	uninstall_root_device();
+	uninstall_driver_package(&drv_infos[DRIVER_VHCI]);
+	uninstall_driver_package(&drv_infos[DRIVER_ROOT]);
+
+	if (!install_driver_package(&drv_infos[DRIVER_VHCI])) {
+		err("cannot install vhci driver package");
+		return 2;
+	}
+	if (!install_driver_package(&drv_infos[DRIVER_ROOT])) {
+		err("cannot install root driver package");
+		return 3;
+	}
+	if (!install_root_device()) {
+		err("cannot install root device");
+		return 4;
+	}
+
+	info("vhci driver installed successfully");
+	return 0;
+}
+
+int
+usbip_uninstall(int argc, char *argv[])
+{
+	uninstall_root_device();
+
+	if (!uninstall_driver_package(&drv_infos[DRIVER_VHCI])) {
+		err("cannot uninstall vhci driver package");
+		return 2;
+	}
+	if (!uninstall_driver_package(&drv_infos[DRIVER_ROOT])) {
+		err("cannot uninstall root driver package");
+		return 3;
+	}
+
+	info("vhci drivers uninstalled");
+	return 0;
 }

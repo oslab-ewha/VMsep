@@ -1,79 +1,135 @@
 #include "vhci.h"
 
-#include "usbip_vhci_api.h"
+#include <wdmguid.h>
+
 #include "vhci_pnp.h"
-#include "usbreq.h"
+#include "vhci_irp.h"
 
 extern NTSTATUS
-vhci_pnp_vhci(pvhci_dev_t vhci, PIRP irp, PIO_STACK_LOCATION irpstack);
-extern NTSTATUS
-vhci_pnp_hpdo(phpdo_dev_t hpdo, PIRP irp, PIO_STACK_LOCATION irpstack);
-extern NTSTATUS
-vhci_pnp_vhub(pvhub_dev_t vhub, PIRP irp, PIO_STACK_LOCATION irpstack);
-extern NTSTATUS
-vhci_pnp_vpdo(pvpdo_dev_t vpdo, PIRP irp, PIO_STACK_LOCATION irpstack);
-extern NTSTATUS
-vhci_add_vhci(PDRIVER_OBJECT drvobj, PDEVICE_OBJECT pdo, phpdo_dev_t hpdo);
-extern NTSTATUS
-vhci_add_vhub(pvhci_dev_t vhci, PDEVICE_OBJECT pdo);
+pnp_query_id(pvdev_t vdev, PIRP irp, PIO_STACK_LOCATION irpstack);
 
 extern NTSTATUS
-vdev_query_interface(pvdev_t vdev, PIO_STACK_LOCATION irpstack);
+pnp_query_device_text(pvdev_t vdev, PIRP irp, PIO_STACK_LOCATION irpstack);
 
-static LPCWSTR vdev_descs[] = {
-	L"usbip-win VHCI", L"usbip-win HPDO", L"usbip-win VHUB", L"usbip-win VPDO"
-};
+extern NTSTATUS
+pnp_query_interface(pvdev_t vdev, PIRP irp, PIO_STACK_LOCATION irpstack);
 
-static LPCWSTR vdev_locinfos[] = {
-	L"root", L"VHCI", L"VHCI", L"HPDO"
-};
+extern NTSTATUS
+pnp_query_dev_relations(pvdev_t vdev, PIRP irp, PIO_STACK_LOCATION irpstack);
 
-PAGEABLE NTSTATUS
-vdev_query_device_text(pvdev_t vdev, PIRP irp)
+extern NTSTATUS
+pnp_query_capabilities(pvdev_t vdev, PIRP irp, PIO_STACK_LOCATION irpstack);
+
+extern NTSTATUS
+pnp_start_device(pvdev_t vdev, PIRP irp);
+
+extern NTSTATUS
+pnp_remove_device(pvdev_t vdev, PIRP irp);
+
+extern BOOLEAN
+process_pnp_vpdo(pvpdo_dev_t vpdo, PIRP irp, PIO_STACK_LOCATION irpstack);
+
+extern NTSTATUS
+pnp_query_resource_requirements(pvdev_t vdev, PIRP irp);
+
+extern NTSTATUS
+pnp_query_resources(pvdev_t vdev, PIRP irp);
+
+extern NTSTATUS
+pnp_filter_resource_requirements(pvdev_t vdev, PIRP irp);
+
+#define IRP_PASS_DOWN_OR_SUCCESS(vdev, irp)			\
+	do {							\
+		if (IS_FDO((vdev)->type)) {			\
+			irp->IoStatus.Status = STATUS_SUCCESS;	\
+			return irp_pass_down((vdev)->devobj_lower, irp);	\
+		}						\
+		else						\
+			return irp_success(irp);		\
+	} while (0)
+
+static PAGEABLE NTSTATUS
+pnp_query_stop_device(pvdev_t vdev, PIRP irp)
 {
-	PIO_STACK_LOCATION	irpstack;
-	NTSTATUS	status;
+	SET_NEW_PNP_STATE(vdev, StopPending);
+	IRP_PASS_DOWN_OR_SUCCESS(vdev, irp);
+}
+
+static PAGEABLE NTSTATUS
+pnp_cancel_stop_device(pvdev_t vdev, PIRP irp)
+{
+	if (vdev->DevicePnPState == StopPending) {
+		// We did receive a query-stop, so restore.
+		RESTORE_PREVIOUS_PNP_STATE(vdev);
+		ASSERT(vdev->DevicePnPState == Started);
+	}
+	IRP_PASS_DOWN_OR_SUCCESS(vdev, irp);
+}
+
+static PAGEABLE NTSTATUS
+pnp_stop_device(pvdev_t vdev, PIRP irp)
+{
+	SET_NEW_PNP_STATE(vdev, Stopped);
+	IRP_PASS_DOWN_OR_SUCCESS(vdev, irp);
+}
+
+static PAGEABLE NTSTATUS
+pnp_query_remove_device(pvdev_t vdev, PIRP irp)
+{
+	switch (vdev->type) {
+	case VDEV_VPDO:
+		/* vpdo cannot be removed */
+		vhub_mark_unplugged_vpdo(VHUB_FROM_VPDO((pvpdo_dev_t)vdev), (pvpdo_dev_t)vdev);
+		break;
+	default:
+		break;
+	}
+	SET_NEW_PNP_STATE(vdev, RemovePending);
+	IRP_PASS_DOWN_OR_SUCCESS(vdev, irp);
+}
+
+static PAGEABLE NTSTATUS
+pnp_cancel_remove_device(pvdev_t vdev, PIRP irp)
+{
+	if (vdev->DevicePnPState == RemovePending) {
+		RESTORE_PREVIOUS_PNP_STATE(vdev);
+	}
+	IRP_PASS_DOWN_OR_SUCCESS(vdev, irp);
+}
+
+static PAGEABLE NTSTATUS
+pnp_surprise_removal(pvdev_t vdev, PIRP irp)
+{
+	SET_NEW_PNP_STATE(vdev, SurpriseRemovePending);
+	IRP_PASS_DOWN_OR_SUCCESS(vdev, irp);
+}
+
+static PAGEABLE NTSTATUS
+pnp_query_bus_information(PIRP irp)
+{
+	PPNP_BUS_INFORMATION busInfo;
 
 	PAGED_CODE();
 
-	status = irp->IoStatus.Status;
-	irpstack = IoGetCurrentIrpStackLocation(irp);
+	busInfo = ExAllocatePoolWithTag(PagedPool, sizeof(PNP_BUS_INFORMATION), USBIP_VHCI_POOL_TAG);
 
-	switch (irpstack->Parameters.QueryDeviceText.DeviceTextType) {
-	case DeviceTextDescription:
-		if (!irp->IoStatus.Information) {
-			irp->IoStatus.Information = (ULONG_PTR)libdrv_strdupW(vdev_descs[vdev->type]);
-			status = STATUS_SUCCESS;
-		}
-		break;
-	case DeviceTextLocationInformation:
-		if (!irp->IoStatus.Information) {
-			irp->IoStatus.Information = (ULONG_PTR)libdrv_strdupW(vdev_locinfos[vdev->type]);
-			status = STATUS_SUCCESS;
-		}
-		break;
-	default:
-		DBGI(DBG_PNP, "unsupported device text type: %u\n", irpstack->Parameters.QueryDeviceText.DeviceTextType);
-		status = STATUS_SUCCESS;
-		break;
+	if (busInfo == NULL) {
+		return STATUS_INSUFFICIENT_RESOURCES;
 	}
 
-	return status;
-}
+	busInfo->BusTypeGuid = GUID_BUS_TYPE_USB;
 
-static PAGEABLE BOOLEAN
-process_pnp_common(pvdev_t vdev, PIRP irp, PIO_STACK_LOCATION irpstack, NTSTATUS *pstatus)
-{
-	switch (irpstack->MinorFunction) {
-	case IRP_MN_QUERY_DEVICE_TEXT:
-		*pstatus = vdev_query_device_text(vdev, irp);
-		return TRUE;
-	case IRP_MN_QUERY_INTERFACE:
-		*pstatus = vdev_query_interface(vdev, irpstack);
-		return TRUE;
-	default:
-		return FALSE;
-	}
+	// Some buses have a specific INTERFACE_TYPE value,
+	// such as PCMCIABus, PCIBus, or PNPISABus.
+	// For other buses, especially newer buses like USBIP, the bus
+	// driver sets this member to PNPBus.
+	busInfo->LegacyBusType = PNPBus;
+
+	// This is an hypothetical bus
+	busInfo->BusNumber = 10;
+	irp->IoStatus.Information = (ULONG_PTR)busInfo;
+
+	return irp_success(irp);
 }
 
 PAGEABLE NTSTATUS
@@ -97,25 +153,63 @@ vhci_pnp(__in PDEVICE_OBJECT devobj, __in PIRP irp)
 		goto END;
 	}
 
-	if (process_pnp_common(vdev, irp, irpstack, &status)) {
-		irp->IoStatus.Status = status;
-		IoCompleteRequest(irp, IO_NO_INCREMENT);
-		goto END;
-	}
-
-	switch (DEVOBJ_VDEV_TYPE(devobj)) {
-	case VDEV_VHCI:
-		status = vhci_pnp_vhci((pvhci_dev_t)vdev, irp, irpstack);
+	switch (irpstack->MinorFunction) {
+	case IRP_MN_START_DEVICE:
+		status = pnp_start_device(vdev, irp);
 		break;
-	case VDEV_HPDO:
-		status = vhci_pnp_hpdo((phpdo_dev_t)vdev, irp, irpstack);
+	case IRP_MN_QUERY_STOP_DEVICE:
+		status = pnp_query_stop_device(vdev, irp);
 		break;
-	case VDEV_VHUB:
-		status = vhci_pnp_vhub((pvhub_dev_t)vdev, irp, irpstack);
+	case IRP_MN_CANCEL_STOP_DEVICE:
+		status = pnp_cancel_stop_device(vdev, irp);
+		break;
+	case IRP_MN_STOP_DEVICE:
+		status = pnp_stop_device(vdev, irp);
+		break;
+	case IRP_MN_QUERY_REMOVE_DEVICE:
+		status = pnp_query_remove_device(vdev, irp);
+		break;
+	case IRP_MN_CANCEL_REMOVE_DEVICE:
+		status = pnp_cancel_remove_device(vdev, irp);
+		break;
+	case IRP_MN_REMOVE_DEVICE:
+		status = pnp_remove_device(vdev, irp);
+		break;
+	case IRP_MN_SURPRISE_REMOVAL:
+		status = pnp_surprise_removal(vdev, irp);
+		break;
+	case IRP_MN_QUERY_ID:
+		status = pnp_query_id(vdev, irp, irpstack);
+		break;
+	case IRP_MN_QUERY_DEVICE_TEXT:
+		status = pnp_query_device_text(vdev, irp, irpstack);
+		break;
+	case IRP_MN_QUERY_INTERFACE:
+		status = pnp_query_interface(vdev, irp, irpstack);
+		break;
+	case IRP_MN_QUERY_DEVICE_RELATIONS:
+		status = pnp_query_dev_relations(vdev, irp, irpstack);
+		break;
+	case IRP_MN_QUERY_CAPABILITIES:
+		status = pnp_query_capabilities(vdev, irp, irpstack);
+		break;
+	case IRP_MN_QUERY_BUS_INFORMATION:
+		status = pnp_query_bus_information(irp);
+		break;
+	case IRP_MN_QUERY_RESOURCE_REQUIREMENTS:
+		status = pnp_query_resource_requirements(vdev, irp);
+		break;
+	case IRP_MN_QUERY_RESOURCES:
+		status = pnp_query_resources(vdev, irp);
+		break;
+	case IRP_MN_FILTER_RESOURCE_REQUIREMENTS:
+		status = pnp_filter_resource_requirements(vdev, irp);
 		break;
 	default:
-		/* VDEV_VPDO */
-		status = vhci_pnp_vpdo((pvpdo_dev_t)vdev, irp, irpstack);
+		if (process_pnp_vpdo((pvpdo_dev_t)vdev, irp, irpstack))
+			status = irp->IoStatus.Status;
+		else
+			status = irp_done(irp, irp->IoStatus.Status);
 		break;
 	}
 
@@ -123,64 +217,4 @@ END:
 	DBGI(DBG_GENERAL | DBG_PNP, "vhci_pnp(%s): Leave: irp:%p, status:%s\n", dbg_vdev_type(DEVOBJ_VDEV_TYPE(devobj)), irp, dbg_ntstatus(status));
 
 	return status;
-}
-
-static PAGEABLE BOOLEAN
-is_valid_vdev_hwid(PDEVICE_OBJECT devobj)
-{
-	LPWSTR	hwid;
-	UNICODE_STRING	ustr_hwid_devprop, ustr_hwid;
-	BOOLEAN	res;
-
-	hwid = get_device_prop(devobj, DevicePropertyHardwareID, NULL);
-	if (hwid == NULL)
-		return FALSE;
-
-	RtlInitUnicodeString(&ustr_hwid, HWID_VDEV);
-	RtlInitUnicodeString(&ustr_hwid_devprop, hwid);
-
-	res = RtlEqualUnicodeString(&ustr_hwid, &ustr_hwid_devprop, TRUE);
-	ExFreePoolWithTag(hwid, USBIP_VHCI_POOL_TAG);
-	return res;
-}
-
-static PAGEABLE pvdev_t
-get_vdev_from_driver(PDRIVER_OBJECT drvobj, vdev_type_t type)
-{
-	PDEVICE_OBJECT	devobj = drvobj->DeviceObject;
-
-	while (devobj) {
-		if (DEVOBJ_VDEV_TYPE(devobj) == type)
-			return DEVOBJ_TO_VDEV(devobj);
-		devobj = devobj->NextDevice;
-	}
-
-	return NULL;
-}
-
-PAGEABLE NTSTATUS
-vhci_add_device(__in PDRIVER_OBJECT drvobj, __in PDEVICE_OBJECT pdo)
-{
-	pvhci_dev_t	vhci;
-
-	PAGED_CODE();
-
-	if (!is_valid_vdev_hwid(pdo)) {
-		DBGE(DBG_GENERAL | DBG_PNP, "invalid hw id\n");
-		return STATUS_INVALID_PARAMETER;
-	}
-
-	vhci = (pvhci_dev_t)get_vdev_from_driver(drvobj, VDEV_VHCI);
-
-	if (vhci == NULL) {
-		phpdo_dev_t	hpdo = (phpdo_dev_t)get_vdev_from_driver(drvobj, VDEV_HPDO);
-
-		return vhci_add_vhci(drvobj, pdo, hpdo);
-	}
-	else if (vhci->vhub != NULL) {
-		DBGE(DBG_GENERAL | DBG_PNP, "vhub already exist\n");
-		return STATUS_DEVICE_ALREADY_ATTACHED;
-	}
-
-	return vhci_add_vhub(vhci, pdo);
 }
