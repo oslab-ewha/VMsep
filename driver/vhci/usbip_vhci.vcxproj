@@ -169,7 +169,7 @@
       <AdditionalDependencies>$(DDK_LIB_PATH)wdmsec.lib;$(DDK_LIB_PATH)ntstrsafe.lib;usbd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Inf>
-      <TimeStamp>0.3.0.0</TimeStamp>
+      <TimeStamp>0.4.0.0</TimeStamp>
     </Inf>
     <PostBuildEvent>
       <Command>gencat.bat $(OutDir) 10_$(DDKPlatform) $(SolutionDir)/driver/usbip_test.pfx
@@ -189,7 +189,7 @@
       <AdditionalDependencies>$(DDK_LIB_PATH)wdmsec.lib;$(DDK_LIB_PATH)ntstrsafe.lib;usbd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Inf>
-      <TimeStamp>0.3.0.0</TimeStamp>
+      <TimeStamp>0.4.0.0</TimeStamp>
     </Inf>
     <PostBuildEvent>
       <Command>gencat.bat $(OutDir) 10_$(DDKPlatform) $(SolutionDir)/driver/usbip_test.pfx
@@ -210,7 +210,7 @@
       <AdditionalDependencies>$(DDK_LIB_PATH)wdmsec.lib;$(DDK_LIB_PATH)ntstrsafe.lib;usbd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Inf>
-      <TimeStamp>0.3.0.0</TimeStamp>
+      <TimeStamp>0.4.0.0</TimeStamp>
     </Inf>
     <DriverSign>
       <FileDigestAlgorithm>sha256</FileDigestAlgorithm>
@@ -234,7 +234,7 @@
       <AdditionalDependencies>$(DDK_LIB_PATH)wdmsec.lib;$(DDK_LIB_PATH)ntstrsafe.lib;usbd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Inf>
-      <TimeStamp>0.3.0.0</TimeStamp>
+      <TimeStamp>0.4.0.0</TimeStamp>
     </Inf>
     <DriverSign>
       <FileDigestAlgorithm>sha256</FileDigestAlgorithm>
