@@ -119,18 +119,18 @@ pnp_query_cap_vpdo(pvpdo_dev_t vpdo, PIO_STACK_LOCATION irpstack)
 		pcaps->DeviceState[PowerSystemSleeping3] = PowerDeviceD3;
 
 	// We can wake the system from D1
-	pcaps->DeviceWake = PowerDeviceD1;
+	pcaps->DeviceWake = PowerDeviceD0;
 
 	// Specifies whether the device hardware supports the D1 and D2
 	// power state. Set these bits explicitly.
-	pcaps->DeviceD1 = TRUE; // Yes we can
+	pcaps->DeviceD1 = FALSE; // Yes we can
 	pcaps->DeviceD2 = FALSE;
 
 	// Specifies whether the device can respond to an external wake
 	// signal while in the D0, D1, D2, and D3 state.
 	// Set these bits explicitly.
-	pcaps->WakeFromD0 = FALSE;
-	pcaps->WakeFromD1 = TRUE; //Yes we can
+	pcaps->WakeFromD0 = TRUE;
+	pcaps->WakeFromD1 = FALSE; //Yes we can
 	pcaps->WakeFromD2 = FALSE;
 	pcaps->WakeFromD3 = FALSE;
 

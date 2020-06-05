@@ -12,15 +12,35 @@ get_power_info(PVOID buffer, ULONG inlen, PULONG poutlen)
 
 	if (inlen < sizeof(USB_POWER_INFO))
 		return STATUS_BUFFER_TOO_SMALL;
-	pinfo->HcDevicePowerState = pinfo->SystemState;
-	pinfo->HcDeviceWake = WdmUsbPowerDeviceD0;
-	pinfo->HcSystemWake = WdmUsbPowerDeviceD0;
-	pinfo->RhDevicePowerState = pinfo->HcDevicePowerState;
-	pinfo->RhDeviceWake = WdmUsbPowerDeviceD0;
-	pinfo->RhSystemWake = WdmUsbPowerDeviceD0;
-	pinfo->LastSystemSleepState = WdmUsbPowerDeviceD0;
-	pinfo->CanWakeup = TRUE;
-	pinfo->IsPowered = TRUE;
+
+	pinfo->HcDeviceWake = WdmUsbPowerDeviceUnspecified;
+	pinfo->HcSystemWake = WdmUsbPowerNotMapped;
+	pinfo->RhDeviceWake = WdmUsbPowerDeviceD2;
+	pinfo->RhSystemWake = WdmUsbPowerSystemWorking;
+	pinfo->LastSystemSleepState = WdmUsbPowerNotMapped;
+
+	switch (pinfo->SystemState) {
+	case WdmUsbPowerSystemWorking:
+		pinfo->HcDevicePowerState = WdmUsbPowerDeviceD0;
+		pinfo->RhDevicePowerState = WdmUsbPowerNotMapped;
+		break;
+	case WdmUsbPowerSystemSleeping1:
+	case WdmUsbPowerSystemSleeping2:
+	case WdmUsbPowerSystemSleeping3:
+		pinfo->HcDevicePowerState = WdmUsbPowerDeviceUnspecified;
+		pinfo->RhDevicePowerState = WdmUsbPowerDeviceD3;
+		break;
+	case WdmUsbPowerSystemHibernate:
+		pinfo->HcDevicePowerState = WdmUsbPowerDeviceD3;
+		pinfo->RhDevicePowerState = WdmUsbPowerDeviceD3;
+		break;
+	case WdmUsbPowerSystemShutdown:
+		pinfo->HcDevicePowerState = WdmUsbPowerNotMapped;
+		pinfo->RhDevicePowerState = WdmUsbPowerNotMapped;
+		break;
+	}
+	pinfo->CanWakeup = FALSE;
+	pinfo->IsPowered = FALSE;
 
 	*poutlen = sizeof(USB_POWER_INFO);
 

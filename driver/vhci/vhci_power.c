@@ -1,23 +1,20 @@
 #include "vhci.h"
 
 #include "vhci_dev.h"
+#include "vhci_irp.h"
 
 static NTSTATUS
 vhci_power_vhci(pvhci_dev_t vhci, PIRP irp, PIO_STACK_LOCATION irpstack)
 {
 	POWER_STATE		powerState;
 	POWER_STATE_TYPE	powerType;
-	NTSTATUS		status;
 
 	powerType = irpstack->Parameters.Power.Type;
 	powerState = irpstack->Parameters.Power.State;
 
 	// If the device is not stated yet, just pass it down.
 	if (vhci->common.DevicePnPState == NotStarted) {
-		PoStartNextPowerIrp(irp);
-		IoSkipCurrentIrpStackLocation(irp);
-		status = PoCallDriver(vhci->common.devobj_lower, irp);
-		return status;
+		return irp_pass_down(vhci->common.devobj_lower, irp);
 	}
 
 	if (irpstack->MinorFunction == IRP_MN_SET_POWER) {
@@ -28,10 +25,7 @@ vhci_power_vhci(pvhci_dev_t vhci, PIRP irp, PIO_STACK_LOCATION irpstack)
 				dbg_device_power(powerState.DeviceState)));
 	}
 
-	PoStartNextPowerIrp(irp);
-	IoSkipCurrentIrpStackLocation(irp);
-	status = PoCallDriver(vhci->common.devobj_lower, irp);
-	return status;
+	return irp_pass_down(vhci->common.devobj_lower, irp);
 }
 
 static NTSTATUS
@@ -99,7 +93,6 @@ vhci_power_vdev(pvdev_t vdev, PIRP irp, PIO_STACK_LOCATION irpstack)
 		irp->IoStatus.Status = status;
 	}
 
-	PoStartNextPowerIrp(irp);
 	status = irp->IoStatus.Status;
 	IoCompleteRequest(irp, IO_NO_INCREMENT);
 
@@ -115,8 +108,8 @@ vhci_power(__in PDEVICE_OBJECT devobj, __in PIRP irp)
 
 	irpstack = IoGetCurrentIrpStackLocation(irp);
 
-	DBGI(DBG_GENERAL | DBG_POWER, "vhci_power(%s): Enter: minor:%s, irp:%p\n",
-		dbg_vdev_type(DEVOBJ_VDEV_TYPE(devobj)), dbg_power_minor(irpstack->MinorFunction), irp);
+	DBGI(DBG_GENERAL | DBG_POWER, "vhci_power(%s): Enter: minor:%s\n",
+		dbg_vdev_type(DEVOBJ_VDEV_TYPE(devobj)), dbg_power_minor(irpstack->MinorFunction));
 
 	status = STATUS_SUCCESS;
 
@@ -137,6 +130,9 @@ vhci_power(__in PDEVICE_OBJECT devobj, __in PIRP irp)
 		status = vhci_power_vdev(vdev, irp, irpstack);
 		break;
 	}
+
+	DBGI(DBG_GENERAL | DBG_POWER, "vhci_power(%s): Leave: status: %s\n",
+		dbg_vdev_type(DEVOBJ_VDEV_TYPE(devobj)), dbg_ntstatus(status));
 
 	return status;
 }
