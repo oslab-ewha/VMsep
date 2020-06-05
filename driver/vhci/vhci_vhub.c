@@ -111,8 +111,10 @@ vhub_get_port_connector_properties(pvhub_dev_t vhub, PUSB_PORT_CONNECTOR_PROPERT
 {
 	if (pinfo->ConnectionIndex > vhub->n_max_ports)
 		return STATUS_INVALID_PARAMETER;
-	if (*poutlen < sizeof(USB_PORT_CONNECTOR_PROPERTIES))
+	if (*poutlen < sizeof(USB_PORT_CONNECTOR_PROPERTIES)) {
+		*poutlen = sizeof(USB_PORT_CONNECTOR_PROPERTIES);
 		return STATUS_BUFFER_TOO_SMALL;
+	}
 
 	pinfo->ActualLength = sizeof(USB_PORT_CONNECTOR_PROPERTIES);
 	pinfo->UsbPortProperties.ul = 0xffffffff;

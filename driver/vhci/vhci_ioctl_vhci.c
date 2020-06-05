@@ -12,31 +12,35 @@ extern NTSTATUS vhci_eject_port(pvhci_dev_t vhci, ULONG port);
 extern NTSTATUS vhci_ioctl_user_request(pvhci_dev_t vhci, PVOID buffer, ULONG inlen, PULONG poutlen);
 
 static PAGEABLE NTSTATUS
-get_controller_name(pvhci_dev_t vhci, PVOID buffer, ULONG inlen, PULONG poutlen)
+get_hcd_driverkey_name(pvhci_dev_t vhci, PVOID buffer, PULONG poutlen)
 {
-	PUSB_HUB_NAME	hub_name = (PUSB_HUB_NAME)buffer;
-	ULONG	hub_namelen, drvkey_buflen;
+	PUSB_HCD_DRIVERKEY_NAME	pdrkey_name = (PUSB_HCD_DRIVERKEY_NAME)buffer;
+	ULONG	outlen_res, drvkey_buflen;
 	LPWSTR	drvkey;
 
-	UNREFERENCED_PARAMETER(inlen);
-
-	drvkey = get_device_prop(vhci->common.devobj_lower, DevicePropertyDriverKeyName, &drvkey_buflen);
-	if (drvkey == NULL)
+	drvkey = get_device_prop(vhci->common.child_pdo->Self, DevicePropertyDriverKeyName, &drvkey_buflen);
+	if (drvkey == NULL) {
+		DBGW(DBG_IOCTL, "failed to get vhci driver key\n");
 		return STATUS_UNSUCCESSFUL;
-
-	hub_namelen = (ULONG)(sizeof(USB_HUB_NAME) + drvkey_buflen - sizeof(WCHAR));
-	if (*poutlen < sizeof(USB_HUB_NAME)) {
-		*poutlen = (ULONG)hub_namelen;
-		ExFreePoolWithTag(drvkey, USBIP_VHCI_POOL_TAG);
-		return STATUS_BUFFER_TOO_SMALL;
 	}
 
-	hub_name->ActualLength = hub_namelen;
-	RtlStringCchCopyW(hub_name->HubName, (*poutlen - sizeof(USB_HUB_NAME) + sizeof(WCHAR)) / sizeof(WCHAR), drvkey);
+	outlen_res = (ULONG)(sizeof(USB_HCD_DRIVERKEY_NAME) + drvkey_buflen - sizeof(WCHAR));
+	if (*poutlen < sizeof(USB_HCD_DRIVERKEY_NAME)) {
+		*poutlen = outlen_res;
+		ExFreePoolWithTag(drvkey, USBIP_VHCI_POOL_TAG);
+		return STATUS_INSUFFICIENT_RESOURCES;
+	}
+
+	pdrkey_name->ActualLength = outlen_res;
+	if (*poutlen >= outlen_res) {
+		RtlCopyMemory(pdrkey_name->DriverKeyName, drvkey, drvkey_buflen);
+		*poutlen = outlen_res;
+	}
+	else
+		RtlCopyMemory(pdrkey_name->DriverKeyName, drvkey, *poutlen - sizeof(USB_HCD_DRIVERKEY_NAME) + sizeof(WCHAR));
+
 	ExFreePoolWithTag(drvkey, USBIP_VHCI_POOL_TAG);
 
-	if (*poutlen > hub_namelen)
-		*poutlen = (ULONG)hub_namelen;
 	return STATUS_SUCCESS;
 }
 
@@ -104,9 +108,8 @@ vhci_ioctl_vhci(pvhci_dev_t vhci, PIO_STACK_LOCATION irpstack, ULONG ioctl_code,
 			status = vhci_eject_port(vhci, ((PUSBIP_VHCI_EJECT_HARDWARE)buffer)->port);
 		*poutlen = 0;
 		break;
-	case IOCTL_INTERNAL_USB_GET_CONTROLLER_NAME:
-		inlen = (ULONG)(ULONG_PTR)irpstack->Parameters.Others.Argument2;
-		status = get_controller_name(vhci, buffer, inlen, poutlen);
+	case IOCTL_GET_HCD_DRIVERKEY_NAME:
+		status = get_hcd_driverkey_name(vhci, buffer, poutlen);
 		break;
 	case IOCTL_USB_GET_ROOT_HUB_NAME:
 		status = vhub_get_roothub_name(DEVOBJ_TO_VHUB(vhci->common.child_pdo->fdo->Self), buffer, inlen, poutlen);

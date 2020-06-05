@@ -156,9 +156,55 @@ get_port_connector_properties(pvhub_dev_t vhub, PVOID buffer, ULONG inlen, PULON
 {
 	PUSB_PORT_CONNECTOR_PROPERTIES	pinfo = (PUSB_PORT_CONNECTOR_PROPERTIES)buffer;
 
-	if (inlen < sizeof(USB_PORT_CONNECTOR_PROPERTIES))
+	if (inlen < sizeof(USB_PORT_CONNECTOR_PROPERTIES)) {
+		*poutlen = sizeof(USB_PORT_CONNECTOR_PROPERTIES);
 		return STATUS_BUFFER_TOO_SMALL;
+	}
 	return vhub_get_port_connector_properties(vhub, pinfo, poutlen);
+}
+
+static PAGEABLE NTSTATUS
+get_node_driverkey_name(pvhub_dev_t vhub, PVOID buffer, ULONG inlen, PULONG poutlen)
+{
+	PUSB_NODE_CONNECTION_DRIVERKEY_NAME	pdrvkey_name = (PUSB_NODE_CONNECTION_DRIVERKEY_NAME)buffer;
+	pvpdo_dev_t	vpdo;
+	LPWSTR		driverkey;
+	ULONG		driverkeylen;
+	NTSTATUS	status;
+
+	if (inlen < sizeof(USB_NODE_CONNECTION_DRIVERKEY_NAME))
+		return STATUS_INVALID_PARAMETER;
+
+	vpdo = vhub_find_vpdo(vhub, pdrvkey_name->ConnectionIndex);
+	if (vpdo == NULL)
+		return STATUS_NO_SUCH_DEVICE;
+	driverkey = get_device_prop(vpdo->common.Self, DevicePropertyDriverKeyName, &driverkeylen);
+	if (driverkey == NULL) {
+		DBGW(DBG_IOCTL, "failed to get vpdo driver key\n");
+		status = STATUS_UNSUCCESSFUL;
+	}
+	else {
+		ULONG	outlen_res = sizeof(USB_NODE_CONNECTION_DRIVERKEY_NAME) + driverkeylen - sizeof(WCHAR);
+
+		if (*poutlen < sizeof(USB_NODE_CONNECTION_DRIVERKEY_NAME)) {
+			status = STATUS_INSUFFICIENT_RESOURCES;
+			*poutlen = outlen_res;
+		}
+		else {
+			pdrvkey_name->ActualLength = outlen_res;
+			if (*poutlen >= outlen_res) {
+				RtlCopyMemory(pdrvkey_name->DriverKeyName, driverkey, driverkeylen);
+				*poutlen = outlen_res;
+			}
+			else
+				RtlCopyMemory(pdrvkey_name->DriverKeyName, driverkey, *poutlen - sizeof(USB_NODE_CONNECTION_DRIVERKEY_NAME) + sizeof(WCHAR));
+			status = STATUS_SUCCESS;
+		}
+		ExFreePoolWithTag(driverkey, USBIP_VHCI_POOL_TAG);
+	}
+	vdev_del_ref((pvdev_t)vpdo);
+
+	return status;
 }
 
 PAGEABLE NTSTATUS
@@ -190,6 +236,9 @@ vhci_ioctl_vhub(pvhub_dev_t vhub, PIRP irp, ULONG ioctl_code, PVOID buffer, ULON
 		break;
 	case IOCTL_USB_GET_PORT_CONNECTOR_PROPERTIES:
 		status = get_port_connector_properties(vhub, buffer, inlen, poutlen);
+		break;
+	case IOCTL_USB_GET_NODE_CONNECTION_DRIVERKEY_NAME:
+		status = get_node_driverkey_name(vhub, buffer, inlen, poutlen);
 		break;
 	default:
 		DBGE(DBG_IOCTL, "unhandled vhub ioctl: %s\n", dbg_vhci_ioctl_code(ioctl_code));
