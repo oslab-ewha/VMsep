@@ -80,6 +80,37 @@ store_urb_reset_dev(PIRP irp, struct urb_req *urbr)
 }
 
 static NTSTATUS
+store_urb_dsc_req(PIRP irp, struct urb_req *urbr)
+{
+	struct usbip_header *hdr;
+	usb_cspkt_t *csp;
+	PUSB_DESCRIPTOR_REQUEST dsc_req;
+	PIO_STACK_LOCATION	irpstack;
+	ULONG	outlen;
+
+	hdr = get_usbip_hdr_from_read_irp(irp);
+	if (hdr == NULL) {
+		return STATUS_BUFFER_TOO_SMALL;
+	}
+
+	dsc_req = (PUSB_DESCRIPTOR_REQUEST)urbr->irp->AssociatedIrp.SystemBuffer;
+	csp = (usb_cspkt_t *)hdr->u.cmd_submit.setup;
+
+	irpstack = IoGetCurrentIrpStackLocation(urbr->irp);
+	outlen = irpstack->Parameters.DeviceIoControl.OutputBufferLength - sizeof(USB_DESCRIPTOR_REQUEST);
+
+	set_cmd_submit_usbip_header(hdr, urbr->seq_num, urbr->vpdo->devid, USBIP_DIR_IN, 0, 0, outlen);
+	build_setup_packet(csp, BMREQUEST_DEVICE_TO_HOST, BMREQUEST_STANDARD, BMREQUEST_TO_DEVICE, USB_REQUEST_GET_DESCRIPTOR);
+	csp->wValue.W = dsc_req->SetupPacket.wValue;
+	csp->wIndex.W = dsc_req->SetupPacket.wIndex;
+	csp->wLength = dsc_req->SetupPacket.wLength;
+
+	irp->IoStatus.Information = sizeof(struct usbip_header);
+
+	return STATUS_SUCCESS;
+}
+
+static NTSTATUS
 store_urb_reset_pipe(PIRP irp, PURB urb, struct urb_req *urbr)
 {
 	/* 1. We clear STALL/HALT feature on endpoint specified by pipe
@@ -848,6 +879,9 @@ store_urbr(PIRP irp, struct urb_req *urbr)
 		break;
 	case IOCTL_INTERNAL_USB_RESET_PORT:
 		status = store_urb_reset_dev(irp, urbr);
+		break;
+	case IOCTL_USB_GET_DESCRIPTOR_FROM_NODE_CONNECTION:
+		status = store_urb_dsc_req(irp, urbr);
 		break;
 	default:
 		DBGW(DBG_READ, "unhandled ioctl: %s\n", dbg_vhci_ioctl_code(ioctl_code));

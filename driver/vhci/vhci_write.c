@@ -80,7 +80,7 @@ post_get_desc(pvpdo_dev_t vpdo, PURB urb)
 	if (dsc == NULL)
 		return;
 	if (dsc->bLength > urb_cdr->TransferBufferLength) {
-		DBGE(DBG_WRITE, "invalid format descriptor: too small(%u < %hhu)\n", urb_cdr->TransferBufferLength, dsc->bLength);
+		DBGI(DBG_WRITE, "skip to cache partial descriptor: (%u < %hhu)\n", urb_cdr->TransferBufferLength, dsc->bLength);
 		return;
 	}
 	try_to_cache_descriptor(vpdo, urb_cdr, dsc);
@@ -327,6 +327,35 @@ process_urb_res_submit(pvpdo_dev_t vpdo, PURB urb, struct usbip_header *hdr)
 }
 
 static NTSTATUS
+process_urb_dsc_req(struct urb_req *urbr, struct usbip_header *hdr)
+{
+	if (hdr->u.ret_submit.status != 0) {
+		DBGW(DBG_WRITE, "dsc_req: wrong status: %s\n", dbg_usbd_status(to_usbd_status(hdr->u.ret_submit.status)));
+		return STATUS_UNSUCCESSFUL;
+	}
+	else {
+		PIO_STACK_LOCATION	irpstack;
+		PIRP	irp = urbr->irp;
+		ULONG	outlen;
+
+		irpstack = IoGetCurrentIrpStackLocation(irp);
+		outlen = irpstack->Parameters.DeviceIoControl.OutputBufferLength;
+
+		irp->IoStatus.Information = hdr->u.ret_submit.actual_length + sizeof(USB_DESCRIPTOR_REQUEST);
+		if (outlen < hdr->u.ret_submit.actual_length + sizeof(USB_DESCRIPTOR_REQUEST)) {
+			irp->IoStatus.Status = STATUS_BUFFER_TOO_SMALL;
+		}
+		else {
+			PUSB_DESCRIPTOR_REQUEST	dsc_req = (PUSB_DESCRIPTOR_REQUEST)urbr->irp->AssociatedIrp.SystemBuffer;
+			RtlCopyMemory(dsc_req->Data, hdr + 1, hdr->u.ret_submit.actual_length);
+			irp->IoStatus.Status = STATUS_SUCCESS;
+		}
+
+		return irp->IoStatus.Status;
+	}
+}
+
+static NTSTATUS
 process_urb_res(struct urb_req *urbr, struct usbip_header *hdr)
 {
 	PIO_STACK_LOCATION	irpstack;
@@ -345,6 +374,8 @@ process_urb_res(struct urb_req *urbr, struct usbip_header *hdr)
 		return process_urb_res_submit(urbr->vpdo, irpstack->Parameters.Others.Argument1, hdr);
 	case IOCTL_INTERNAL_USB_RESET_PORT:
 		return STATUS_SUCCESS;
+	case IOCTL_USB_GET_DESCRIPTOR_FROM_NODE_CONNECTION:
+		return process_urb_dsc_req(urbr, hdr);
 	default:
 		DBGE(DBG_WRITE, "unhandled ioctl: %s\n", dbg_vhci_ioctl_code(ioctl_code));
 		return STATUS_INVALID_PARAMETER;

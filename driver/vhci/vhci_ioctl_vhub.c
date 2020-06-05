@@ -16,7 +16,7 @@ extern NTSTATUS
 vpdo_get_nodeconn_info_ex_v2(pvpdo_dev_t vpdo, PUSB_NODE_CONNECTION_INFORMATION_EX_V2 nodeconn, PULONG poutlen);
 
 extern NTSTATUS
-vpdo_get_dsc_from_nodeconn(pvpdo_dev_t vpdo, PUSB_DESCRIPTOR_REQUEST dsc_req, PULONG poutlen);
+vpdo_get_dsc_from_nodeconn(pvpdo_dev_t vpdo, PIRP irp, PUSB_DESCRIPTOR_REQUEST dsc_req, PULONG poutlen);
 
 extern NTSTATUS
 vhub_get_information_ex(pvhub_dev_t vhub, PUSB_HUB_INFORMATION_EX pinfo);
@@ -111,7 +111,7 @@ get_nodeconn_info_ex_v2(pvhub_dev_t vhub, PVOID buffer, ULONG inlen, PULONG pout
 }
 
 static PAGEABLE NTSTATUS
-get_descriptor_from_nodeconn(pvhub_dev_t vhub, PVOID buffer, ULONG inlen, PULONG poutlen)
+get_descriptor_from_nodeconn(pvhub_dev_t vhub, PIRP irp, PVOID buffer, ULONG inlen, PULONG poutlen)
 {
 	PUSB_DESCRIPTOR_REQUEST	dsc_req = (PUSB_DESCRIPTOR_REQUEST)buffer;
 	pvpdo_dev_t	vpdo;
@@ -126,7 +126,7 @@ get_descriptor_from_nodeconn(pvhub_dev_t vhub, PVOID buffer, ULONG inlen, PULONG
 	if (vpdo == NULL)
 		return STATUS_NO_SUCH_DEVICE;
 
-	status = vpdo_get_dsc_from_nodeconn(vpdo, dsc_req, poutlen);
+	status = vpdo_get_dsc_from_nodeconn(vpdo, irp, dsc_req, poutlen);
 	vdev_del_ref((pvdev_t)vpdo);
 	return status;
 }
@@ -162,7 +162,7 @@ get_port_connector_properties(pvhub_dev_t vhub, PVOID buffer, ULONG inlen, PULON
 }
 
 PAGEABLE NTSTATUS
-vhci_ioctl_vhub(pvhub_dev_t vhub, ULONG ioctl_code, PVOID buffer, ULONG inlen, ULONG *poutlen)
+vhci_ioctl_vhub(pvhub_dev_t vhub, PIRP irp, ULONG ioctl_code, PVOID buffer, ULONG inlen, ULONG *poutlen)
 {
 	NTSTATUS	status = STATUS_INVALID_DEVICE_REQUEST;
 
@@ -180,7 +180,7 @@ vhci_ioctl_vhub(pvhub_dev_t vhub, ULONG ioctl_code, PVOID buffer, ULONG inlen, U
 		status = get_nodeconn_info_ex_v2(vhub, buffer, inlen, poutlen);
 		break;
 	case IOCTL_USB_GET_DESCRIPTOR_FROM_NODE_CONNECTION:
-		status = get_descriptor_from_nodeconn(vhub, buffer, inlen, poutlen);
+		status = get_descriptor_from_nodeconn(vhub, irp, buffer, inlen, poutlen);
 		break;
 	case IOCTL_USB_GET_HUB_INFORMATION_EX:
 		status = get_hub_information_ex(vhub, buffer, poutlen);

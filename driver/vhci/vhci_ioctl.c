@@ -5,7 +5,7 @@
 extern NTSTATUS
 vhci_ioctl_vhci(pvhci_dev_t vhci, PIO_STACK_LOCATION irpstack, ULONG ioctl_code, PVOID buffer, ULONG inlen, ULONG *poutlen);
 extern  NTSTATUS
-vhci_ioctl_vhub(pvhub_dev_t vhub, ULONG ioctl_code, PVOID buffer, ULONG inlen, ULONG *poutlen);
+vhci_ioctl_vhub(pvhub_dev_t vhub, PIRP irp, ULONG ioctl_code, PVOID buffer, ULONG inlen, ULONG *poutlen);
 
 PAGEABLE NTSTATUS
 vhci_ioctl(__in PDEVICE_OBJECT devobj, __in PIRP irp)
@@ -40,7 +40,7 @@ vhci_ioctl(__in PDEVICE_OBJECT devobj, __in PIRP irp)
 		status = vhci_ioctl_vhci(DEVOBJ_TO_VHCI(devobj), irpstack, ioctl_code, buffer, inlen, &outlen);
 		break;
 	case VDEV_VHUB:
-		status = vhci_ioctl_vhub(DEVOBJ_TO_VHUB(devobj), ioctl_code, buffer, inlen, &outlen);
+		status = vhci_ioctl_vhub(DEVOBJ_TO_VHUB(devobj), irp, ioctl_code, buffer, inlen, &outlen);
 		break;
 	default:
 		DBGW(DBG_IOCTL, "ioctl for %s is not allowed\n", dbg_vdev_type(DEVOBJ_VDEV_TYPE(devobj)));
@@ -50,8 +50,10 @@ vhci_ioctl(__in PDEVICE_OBJECT devobj, __in PIRP irp)
 
 	irp->IoStatus.Information = outlen;
 END:
-	irp->IoStatus.Status = status;
-	IoCompleteRequest(irp, IO_NO_INCREMENT);
+	if (status != STATUS_PENDING) {
+		irp->IoStatus.Status = status;
+		IoCompleteRequest(irp, IO_NO_INCREMENT);
+	}
 
 	DBGI(DBG_GENERAL | DBG_IOCTL, "vhci_ioctl: Leave: irp:%p, status:%s\n", irp, dbg_ntstatus(status));
 
