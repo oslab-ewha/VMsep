@@ -160,8 +160,8 @@ dbg_namecode(namecode_t *namecodes, const char *codetype, unsigned int code)
 				nwritten += libdrv_snprintf(buf + nwritten, NAMECODE_BUF_MAX - nwritten, ",%s", namecodes[i].name);
 			else
 				nwritten = libdrv_snprintf(buf, NAMECODE_BUF_MAX, "%s", namecodes[i].name);
+			n_codes++;
 		}
-		n_codes++;
 	}
 	if (n_codes == 0)
 		libdrv_snprintf(buf, NAMECODE_BUF_MAX, "Unknown %s code: %x", codetype, code);
