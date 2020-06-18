@@ -101,6 +101,8 @@ struct journal_head {
 
 	/* Trigger type for the committing transaction's frozen data */
 	struct jbd2_buffer_trigger_type *b_frozen_triggers;
+
+	unsigned long	ino;
 };
 
 #endif		/* JOURNAL_HEAD_H_INCLUDED */

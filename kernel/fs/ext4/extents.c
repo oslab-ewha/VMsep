@@ -4983,7 +4983,7 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
 
 	if (file->f_flags & O_SYNC && EXT4_SB(inode->i_sb)->s_journal) {
 		ret = jbd2_vmsep_complete_transaction(EXT4_SB(inode->i_sb)->s_journal,
-						      EXT4_I(inode)->i_sync_tid);
+						      EXT4_I(inode)->i_sync_tid, 0);
 	}
 out:
 	inode_unlock(inode);

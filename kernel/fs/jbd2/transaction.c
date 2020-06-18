@@ -160,7 +160,7 @@ static void wait_transaction_locked(journal_t *journal)
 	need_to_start = !tid_geq(journal->j_commit_request, tid);
 	read_unlock(&journal->j_state_lock);
 	if (need_to_start)
-		jbd2_vmsep_log_start_commit(journal, tid);
+		jbd2_vmsep_log_start_commit(journal, tid, 0);
 	jbd2_might_wait_for_commit(journal);
 	schedule();
 	finish_wait(&journal->j_wait_transaction_locked, &wait);
@@ -459,7 +459,16 @@ handle_t *jbd2_vmsep__journal_start(journal_t *journal, int nblocks, int rsv_blo
 }
 EXPORT_SYMBOL(jbd2_vmsep__journal_start);
 
+transaction_t *
+alloc_new_transaction(journal_t *journal)
+{
+	transaction_t	*new_transaction;
 
+	new_transaction = kmem_cache_zalloc(transaction_cache, GFP_NOFS);
+	jbd2_get_transaction(journal, new_transaction);
+	return new_transaction;
+}
+		
 /**
  * handle_t *jbd2_journal_start() - Obtain a new handle.
  * @journal: Journal to start transaction on.
@@ -677,7 +686,7 @@ int jbd2_vmsep__journal_restart(handle_t *handle, int nblocks, gfp_t gfp_mask)
 	need_to_start = !tid_geq(journal->j_commit_request, tid);
 	read_unlock(&journal->j_state_lock);
 	if (need_to_start)
-		jbd2_vmsep_log_start_commit(journal, tid);
+		jbd2_vmsep_log_start_commit(journal, tid, 0);
 
 	rwsem_release(&journal->j_trans_commit_map, 1, _THIS_IP_);
 	handle->h_buffer_credits = nblocks;
@@ -1327,7 +1336,7 @@ void jbd2_vmsep_buffer_abort_trigger(struct journal_head *jh,
  * buffer: that only gets done when the old transaction finally
  * completes its commit.
  */
-int jbd2_vmsep_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
+int jbd2_vmsep_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh, unsigned long ino)
 {
 	transaction_t *transaction = handle->h_transaction;
 	journal_t *journal;
@@ -1417,6 +1426,7 @@ int jbd2_vmsep_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
 	}
 
 	set_buffer_jbddirty(bh);
+	jh->ino = ino;
 
 	/*
 	 * Metadata already on the current transaction list doesn't
@@ -1743,7 +1753,7 @@ int jbd2_vmsep_journal_stop(handle_t *handle)
 		jbd_debug(2, "transaction too old, requesting commit for "
 					"handle %p\n", handle);
 		/* This is non-blocking */
-		jbd2_vmsep_log_start_commit(journal, transaction->t_tid);
+		jbd2_vmsep_log_start_commit(journal, transaction->t_tid, 0);
 
 		/*
 		 * Special case: JBD2_SYNC synchronous updates require us

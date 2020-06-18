@@ -699,6 +699,9 @@ struct transaction_s
 	 * structures associated with the transaction
 	 */
 	struct list_head	t_private_list;
+
+	/* VMsep: inode number of commiting journal heads */
+	unsigned long	ino_sync;
 };
 
 struct transaction_run_stats_s {
@@ -1257,7 +1260,7 @@ extern int	 jbd2_vmsep_journal_get_create_access (handle_t *, struct buffer_head
 extern int	 jbd2_vmsep_journal_get_undo_access(handle_t *, struct buffer_head *);
 void		 jbd2_vmsep_journal_set_triggers(struct buffer_head *,
 						 struct jbd2_buffer_trigger_type *type);
-extern int	 jbd2_vmsep_journal_dirty_metadata (handle_t *, struct buffer_head *);
+extern int	 jbd2_vmsep_journal_dirty_metadata (handle_t *, struct buffer_head *, unsigned long ino);
 extern int	 jbd2_vmsep_journal_forget (handle_t *, struct buffer_head *);
 extern void	 journal_sync_buffer (struct buffer_head *);
 extern int	 jbd2_vmsep_journal_invalidatepage(journal_t *,
@@ -1368,11 +1371,11 @@ extern void	jbd2_vmsep_clear_buffer_revoked_flags(journal_t *journal);
  * transitions on demand.
  */
 
-int jbd2_vmsep_log_start_commit(journal_t *journal, tid_t tid);
-int __jbd2_vmsep_log_start_commit(journal_t *journal, tid_t tid);
+int jbd2_vmsep_log_start_commit(journal_t *journal, tid_t tid, unsigned long ino_sync);
+int __jbd2_vmsep_log_start_commit(journal_t *journal, tid_t tid, unsigned long ino_sync);
 int jbd2_vmsep_journal_start_commit(journal_t *journal, tid_t *tid);
 int jbd2_vmsep_log_wait_commit(journal_t *journal, tid_t tid);
-int jbd2_vmsep_complete_transaction(journal_t *journal, tid_t tid);
+int jbd2_vmsep_complete_transaction(journal_t *journal, tid_t tid, unsigned long ino_sync);
 int jbd2_vmsep_log_do_checkpoint(journal_t *journal);
 int jbd2_vmsep_trans_will_send_data_barrier(journal_t *journal, tid_t tid);
 
