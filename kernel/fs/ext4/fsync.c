@@ -79,6 +79,18 @@ static int ext4_sync_parent(struct inode *inode)
 	return ret;
 }
 
+static int
+is_vm_commit(struct ext4_sb_info *sbi, unsigned long ino)
+{
+	int	i;
+
+	for (i = 0; i < sbi->n_VM_inodes; i++) {
+		if (sbi->VM_inodes[i] == ino)
+			return 0;
+	}
+	return -1;
+}
+
 /*
  * akpm: A new design for ext4_sync_file().
  *
@@ -95,6 +107,7 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
 {
 	struct inode *inode = file->f_mapping->host;
 	struct ext4_inode_info *ei = EXT4_I(inode);
+	unsigned long	ino_sync = 0;
 	journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
 	int ret = 0, err;
 	tid_t commit_tid;
@@ -150,7 +163,9 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
 	if (journal->j_flags & JBD2_BARRIER &&
 	    !jbd2_vmsep_trans_will_send_data_barrier(journal, commit_tid))
 		needs_barrier = true;
-	ret = jbd2_vmsep_complete_transaction(journal, commit_tid);
+	if (is_vm_commit(EXT4_SB(inode->i_sb), inode->i_ino) == 0)
+		ino_sync = inode->i_ino;
+	ret = jbd2_vmsep_complete_transaction(journal, commit_tid, ino_sync);
 	if (needs_barrier) {
 	issue_flush:
 		err = blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL, NULL);

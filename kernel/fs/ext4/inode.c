@@ -216,7 +216,7 @@ void ext4_evict_inode(struct inode *inode)
 			journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
 			tid_t commit_tid = EXT4_I(inode)->i_datasync_tid;
 
-			jbd2_vmsep_complete_transaction(journal, commit_tid);
+			jbd2_vmsep_complete_transaction(journal, commit_tid, 0);
 			filemap_write_and_wait(&inode->i_data);
 		}
 		truncate_inode_pages_final(&inode->i_data);

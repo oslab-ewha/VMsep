@@ -337,6 +337,10 @@ static void jbd2_block_tag_csum_set(journal_t *j, journal_block_tag_t *tag,
 	else
 		tag->t_checksum = cpu_to_be16(csum32);
 }
+
+extern transaction_t *
+alloc_new_transaction(journal_t *journal);
+
 /*
  * jbd2_journal_commit_transaction
  *
@@ -347,6 +351,7 @@ void jbd2_vmsep_journal_commit_transaction(journal_t *journal)
 {
 	struct transaction_stats_s stats;
 	transaction_t *commit_transaction;
+	transaction_t *running_transaction;
 	struct journal_head *jh;
 	struct buffer_head *descriptor;
 	struct buffer_head **wbuf = journal->j_wbuf;
@@ -405,6 +410,7 @@ void jbd2_vmsep_journal_commit_transaction(journal_t *journal)
 	J_ASSERT(journal->j_committing_transaction == NULL);
 
 	commit_transaction = journal->j_running_transaction;
+	running_transaction = alloc_new_transaction(journal);
 
 	trace_jbd2_vmsep_start_commit(journal, commit_transaction);
 	jbd_debug(1, "JBD2: starting commit of transaction %d\n",
@@ -413,6 +419,7 @@ void jbd2_vmsep_journal_commit_transaction(journal_t *journal)
 	write_lock(&journal->j_state_lock);
 	J_ASSERT(commit_transaction->t_state == T_RUNNING);
 	commit_transaction->t_state = T_LOCKED;
+	running_transaction->t_state = T_RUNNING;
 
 	trace_jbd2_vmsep_commit_locking(journal, commit_transaction);
 	stats.run.rs_wait = commit_transaction->t_max_wait;
@@ -563,6 +570,14 @@ void jbd2_vmsep_journal_commit_transaction(journal_t *journal)
 		/* Find the next buffer to be journaled... */
 
 		jh = commit_transaction->t_buffers;
+
+		if (jh->ino != commit_transaction->ino_sync) {
+			extern void jbd2_vmsep_journal_unfile_buffer(journal_t *journal, struct journal_head *jh);
+			int	jlist = jh->b_jlist;
+			jbd2_vmsep_journal_unfile_buffer(journal, jh);
+			jbd2_vmsep_journal_file_buffer(jh, running_transaction, jlist);
+			continue;
+		}
 
 		/* If we're in abort mode, we just un-journal the buffer and
 		   release it. */
@@ -754,6 +769,7 @@ start_journal_io:
 	}
 	J_ASSERT(commit_transaction->t_state == T_COMMIT);
 	commit_transaction->t_state = T_COMMIT_DFLUSH;
+	journal->j_running_transaction = running_transaction;
 	write_unlock(&journal->j_state_lock);
 
 	/* 

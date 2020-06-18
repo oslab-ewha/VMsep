@@ -501,7 +501,7 @@ repeat:
  * Called with j_state_lock locked for writing.
  * Returns true if a transaction commit was started.
  */
-int __jbd2_vmsep_log_start_commit(journal_t *journal, tid_t target)
+int __jbd2_vmsep_log_start_commit(journal_t *journal, tid_t target, unsigned long ino_sync)
 {
 	/* Return if the txn has already requested to be committed */
 	if (journal->j_commit_request == target)
@@ -524,6 +524,7 @@ int __jbd2_vmsep_log_start_commit(journal_t *journal, tid_t target)
 			  journal->j_commit_request,
 			  journal->j_commit_sequence);
 		journal->j_running_transaction->t_requested = jiffies;
+		journal->j_running_transaction->ino_sync = ino_sync;
 		wake_up(&journal->j_wait_commit);
 		return 1;
 	} else if (!tid_geq(journal->j_commit_request, target))
@@ -538,12 +539,12 @@ int __jbd2_vmsep_log_start_commit(journal_t *journal, tid_t target)
 	return 0;
 }
 
-int jbd2_vmsep_log_start_commit(journal_t *journal, tid_t tid)
+int jbd2_vmsep_log_start_commit(journal_t *journal, tid_t tid, unsigned long ino_sync)
 {
 	int ret;
 
 	write_lock(&journal->j_state_lock);
-	ret = __jbd2_vmsep_log_start_commit(journal, tid);
+	ret = __jbd2_vmsep_log_start_commit(journal, tid, ino_sync);
 	write_unlock(&journal->j_state_lock);
 	return ret;
 }
@@ -577,7 +578,7 @@ static int __jbd2_journal_force_commit(journal_t *journal)
 	tid = transaction->t_tid;
 	read_unlock(&journal->j_state_lock);
 	if (need_to_start)
-		jbd2_vmsep_log_start_commit(journal, tid);
+		jbd2_vmsep_log_start_commit(journal, tid, 0);
 	ret = jbd2_vmsep_log_wait_commit(journal, tid);
 	if (!ret)
 		ret = 1;
@@ -632,7 +633,7 @@ int jbd2_vmsep_journal_start_commit(journal_t *journal, tid_t *ptid)
 	if (journal->j_running_transaction) {
 		tid_t tid = journal->j_running_transaction->t_tid;
 
-		__jbd2_vmsep_log_start_commit(journal, tid);
+		__jbd2_vmsep_log_start_commit(journal, tid, 0);
 		/* There's a running transaction and we've just made sure
 		 * it's commit has been scheduled. */
 		if (ptid)
@@ -745,7 +746,7 @@ int jbd2_vmsep_log_wait_commit(journal_t *journal, tid_t tid)
  * the transaction id is stale, it is by definition already completed,
  * so just return SUCCESS.
  */
-int jbd2_vmsep_complete_transaction(journal_t *journal, tid_t tid)
+int jbd2_vmsep_complete_transaction(journal_t *journal, tid_t tid, unsigned long ino_sync)
 {
 	int	need_to_wait = 1;
 
@@ -755,7 +756,7 @@ int jbd2_vmsep_complete_transaction(journal_t *journal, tid_t tid)
 		if (journal->j_commit_request != tid) {
 			/* transaction not yet started, so request it */
 			read_unlock(&journal->j_state_lock);
-			jbd2_vmsep_log_start_commit(journal, tid);
+			jbd2_vmsep_log_start_commit(journal, tid, ino_sync);
 			goto wait_commit;
 		}
 	} else if (!(journal->j_committing_transaction &&
@@ -1960,7 +1961,7 @@ int jbd2_vmsep_journal_flush(journal_t *journal)
 	/* Force everything buffered to the log... */
 	if (journal->j_running_transaction) {
 		transaction = journal->j_running_transaction;
-		__jbd2_vmsep_log_start_commit(journal, transaction->t_tid);
+		__jbd2_vmsep_log_start_commit(journal, transaction->t_tid, 0);
 	} else if (journal->j_committing_transaction)
 		transaction = journal->j_committing_transaction;
 
@@ -2084,7 +2085,7 @@ void __jbd2_vmsep_journal_abort_hard(journal_t *journal)
 	journal->j_flags |= JBD2_ABORT;
 	transaction = journal->j_running_transaction;
 	if (transaction)
-		__jbd2_vmsep_log_start_commit(journal, transaction->t_tid);
+		__jbd2_vmsep_log_start_commit(journal, transaction->t_tid, 0);
 	write_unlock(&journal->j_state_lock);
 }
 
