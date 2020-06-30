@@ -39,7 +39,6 @@
   - Tested on Ubuntu 16.04
   - Kernel 4.15.0-29 (USB/IP kernel module crash was observed on some other version)
   - `# modprobe vhci-hcd`
-
 - Install USB/IP test certificate
   - Install `driver/usbip_test.pfx` (password: usbip)
   - Certificate should be installed into
@@ -71,7 +70,6 @@ usbip.exe list -l
 - Run `usbipd.exe`
   - `> usbipd.exe -d -4`
 	- TCP port `3240` should be allowed by firewall
-
 - Attach USB/IP device on linux machine
   - `# usbip attach -r <usbip server ip> -b 1-59`
 
@@ -81,10 +79,8 @@ usbip.exe list -l
   - tested on Ubuntu 16.04 (Kernerl 4.15.0-29)
   - `# modprobe usbip-host`
   - You can use virtual [usbip-vstub](https://github.com/cezanne/usbip-vstub) as a stub server
-  
 - Run usbipd on a USB/IP server (Linux)
   - `# usbipd -4 -d`
-
 - Install USB/IP test certificate
   - Install `driver/usbip_test.pfx` (password: usbip)
   - Certificate should be installed into
@@ -93,27 +89,44 @@ usbip.exe list -l
 - Enable test signing
   - `> bcdedit.exe /set TESTSIGNING ON`
   - reboot the system to apply
-- Copy `usbip.exe`, `usbip_vhci.sys`, `usbip_vhci.inf`, `usbip_root.inf`, `usbip_vhci.cat` into a folder in target machine
+- Copy vhci driver files into a folder in target machine
+  - Currently, there are 2 versions for a vhci driver: vhci(old) and vhci(ude)
+  - vhci(ude) is newly developed to fully support USB applications using MS UDE framework.
+  - If you're testing vhci(ude), copy `usbip.exe`, `usbip_vhci_udf.sys`, `usbip_vhci_udf.inf`, `usbip_vhci_udf.cat` into a folder in target machine
+  - If you're testing vhci(old), copy `usbip.exe`, `usbip_vhci.sys`, `usbip_vhci.inf`, `usbip_root.inf`, `usbip_vhci.cat` into a folder in target machine
   - You can find all files in output folder after build or on [release](https://github.com/cezanne/usbip-win/releases) page.
 - Install USB/IP VHCI driver
   - You can install using usbip.exe or manually
-  - Using usbip.exe install command 
-    - Run PowerShell or CMD as an Administrator
-    - `PS> usbip.exe install`
-  - Install manually
-    - Run PowerShell or CMD as an Administrator
-    - `PS> pnputil /add-driver usbip_vhci.inf`
-    - Start Device manager
-    - Choose "Add Legacy Hardware" from the "Action" menu.
-    - Select "Install the hardware that I manually select from the list".
-    - Click "Next".
-    - Click "Have Disk", click "Browse", choose the copied folder, and click "OK".
-    - Click on the "USB/IP VHCI Root", and then click "Next".
-    - Click Finish at "Completing the Add/Remove Hardware Wizard".
+  - Using usbip.exe install command
+     - Run PowerShell or CMD as an Administrator
+     - if using vhci(ude), `PS> usbip.exe install_ude`
+     - if using vhci(old), `PS> usbip.exe install`
+  - Install manually(new ude vhci)
+     - Run PowerShell or CMD as an Administrator
+     - `PS> pnputil /add-driver usbip_vhci_ude.inf`
+     - Start Device manager
+     - Choose "Add Legacy Hardware" from the "Action" menu.
+     - Select "Install the hardware that I manually select from the list".
+     - Click "Next".
+     - Click "Have Disk", click "Browse", choose the copied folder, and click "OK".
+     - Click on the "usbip-win VHCI(ude)", and then click "Next".
+     - Click Finish at "Completing the Add/Remove Hardware Wizard".	 
+  - Install manually(old vhci)
+     - Run PowerShell or CMD as an Administrator
+     - `PS> pnputil /add-driver usbip_vhci.inf`
+     - Start Device manager
+     - Choose "Add Legacy Hardware" from the "Action" menu.
+     - Select "Install the hardware that I manually select from the list".
+     - Click "Next".
+     - Click "Have Disk", click "Browse", choose the copied folder, and click "OK".
+     - Click on the "USB/IP VHCI Root", and then click "Next".
+     - Click Finish at "Completing the Add/Remove Hardware Wizard".
 - Attach a remote USB device
-  - `> usbip.exe attach -r <usbip server ip> -b 2-2`
+  - if using vhci(ude), `> usbip.exe attach_ude -r <usbip server ip> -b 2-2`
+  - if using vhci(old), `> usbip.exe attach -r <usbip server ip> -b 2-2`
 - Uninstall driver
-  - `PS> usbip.exe uninstall`
+  - if using vhci(ude), `PS> usbip.exe uninstall_ude`
+  - if using vhci(old),`PS> usbip.exe uninstall`
 - Disable test signing
   - `> bcdedit.exe /set TESTSIGNING OFF`
   - reboot the system to apply
@@ -147,8 +160,9 @@ Windows Registry Editor Version 5.00
 
 #### How to get linux kernel log
 - Sometimes linux kernel log is required
+
 ```
-# dmesg --follow | tee kernel_log.txt
+\# dmesg --follow | tee kernel_log.txt
 ```
 
 <hr>

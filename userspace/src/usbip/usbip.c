@@ -68,6 +68,12 @@ static const struct command cmds[] = {
 		.usage = usbip_attach_usage
 	},
 	{
+		.name = "attach_ude",
+		.fn = usbip_attach_ude,
+		.help = "Attach a remote USB device(via UDE-versino vhci)",
+		.usage = usbip_attach_usage
+	},
+	{
 		.name  = "detach",
 		.fn    = usbip_detach,
 		.help  = "Detach a remote USB device",
@@ -100,6 +106,18 @@ static const struct command cmds[] = {
 	{
 		.name = "uninstall",
 		.fn = usbip_uninstall,
+		.help = "Uninstall drivers for usbip",
+		.usage = usbip_uninstall_usage
+	},
+	{
+		.name = "install_ude",
+		.fn = usbip_install_ude,
+		.help = "Install or reinstall drivers for usbip",
+		.usage = usbip_install_usage
+	},
+	{
+		.name = "uninstall_ude",
+		.fn = usbip_uninstall_ude,
 		.help = "Uninstall drivers for usbip",
 		.usage = usbip_uninstall_usage
 	},

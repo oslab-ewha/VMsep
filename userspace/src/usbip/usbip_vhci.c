@@ -17,7 +17,7 @@ walker_devpath(HDEVINFO dev_info, PSP_DEVINFO_DATA pdev_info_data, devno_t devno
 	PSP_DEVICE_INTERFACE_DETAIL_DATA	pdev_interface_detail;
 
 	id_hw = get_id_hw(dev_info, pdev_info_data);
-	if (id_hw == NULL || _stricmp(id_hw, "usbipwin\\vhci") != 0) {
+	if (id_hw == NULL || (_stricmp(id_hw, "usbipwin\\vhci") != 0 && _stricmp(id_hw, "root\\vhci_ude") != 0)) {
 		err("%s: invalid hw id: %s\n", __FUNCTION__, id_hw ? id_hw : "");
 		if (id_hw != NULL)
 			free(id_hw);
@@ -128,6 +128,20 @@ usbip_vhci_attach_device(HANDLE hdev, int port, const char *instid, usbip_wudev_
 
 	if (!DeviceIoControl(hdev, IOCTL_USBIP_VHCI_PLUGIN_HARDWARE,
 		&plugin, sizeof(plugin), NULL, 0, &unused, NULL)) {
+		err("usbip_vhci_attach_device: DeviceIoControl failed: err: 0x%lx", GetLastError());
+		return -1;
+	}
+
+	return 0;
+}
+
+int
+usbip_vhci_attach_device_ude(HANDLE hdev, pvhci_pluginfo_t pluginfo)
+{
+	unsigned long	unused;
+
+	if (!DeviceIoControl(hdev, IOCTL_USBIP_VHCI_PLUGIN_HARDWARE,
+		pluginfo, pluginfo->size, NULL, 0, &unused, NULL)) {
 		err("usbip_vhci_attach_device: DeviceIoControl failed: err: 0x%lx", GetLastError());
 		return -1;
 	}
