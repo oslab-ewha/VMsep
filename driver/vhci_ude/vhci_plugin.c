@@ -18,7 +18,7 @@ setup_vusb(UDECXUSBDEVICE ude_usbdev)
 
 	status = WdfWaitLockCreate(&attrs, &vusb->lock);
 	if (NT_ERROR(status)) {
-		TRE(VUSB, "failed to create wait lock: %!STATUS!", status);
+		TRE(PLUGIN, "failed to create wait lock: %!STATUS!", status);
 		return FALSE;
 	}
 
@@ -27,7 +27,7 @@ setup_vusb(UDECXUSBDEVICE ude_usbdev)
 
 	status = WdfLookasideListCreate(&attrs, sizeof(urb_req_t), PagedPool, &attrs_hmem, 0, &vusb->lookaside_urbr);
 	if (NT_ERROR(status)) {
-		TRE(VUSB, "failed to create urbr memory: %!STATUS!", status);
+		TRE(PLUGIN, "failed to create urbr memory: %!STATUS!", status);
 		return FALSE;
 	}
 
@@ -46,6 +46,29 @@ setup_vusb(UDECXUSBDEVICE ude_usbdev)
 	return TRUE;
 }
 
+static NTSTATUS
+vusb_d0_entry(_In_ WDFDEVICE hdev, _In_ UDECXUSBDEVICE ude_usbdev)
+{
+	UNREFERENCED_PARAMETER(hdev);
+	UNREFERENCED_PARAMETER(ude_usbdev);
+
+	TRD(VUSB, "Enter");
+
+	return STATUS_NOT_SUPPORTED;
+}
+
+static NTSTATUS
+vusb_d0_exit(_In_ WDFDEVICE hdev, _In_ UDECXUSBDEVICE ude_usbdev, UDECX_USB_DEVICE_WAKE_SETTING setting)
+{
+	UNREFERENCED_PARAMETER(hdev);
+	UNREFERENCED_PARAMETER(ude_usbdev);
+	UNREFERENCED_PARAMETER(setting);
+
+	TRD(VUSB, "Enter");
+
+	return STATUS_NOT_SUPPORTED;
+}
+
 static PUDECXUSBDEVICE_INIT
 build_vusb_pdinit(pctx_vhci_t vhci)
 {
@@ -57,6 +80,8 @@ build_vusb_pdinit(pctx_vhci_t vhci)
 	UDECX_USB_DEVICE_CALLBACKS_INIT(&callbacks);
 
 	setup_ep_callbacks(&callbacks);
+	callbacks.EvtUsbDeviceLinkPowerEntry = vusb_d0_entry;
+	callbacks.EvtUsbDeviceLinkPowerExit = vusb_d0_exit;
 
 	UdecxUsbDeviceInitSetStateChangeCallbacks(pdinit, &callbacks);
 	UdecxUsbDeviceInitSetSpeed(pdinit, UdecxUsbFullSpeed);
@@ -73,12 +98,12 @@ setup_descriptors(PUDECXUSBDEVICE_INIT pdinit, pvhci_pluginfo_t pluginfo)
 
 	status = UdecxUsbDeviceInitAddDescriptor(pdinit, pluginfo->dscr_dev, 18);
 	if (NT_ERROR(status)) {
-		TRW(VUSB, "failed to add a device descriptor to device init");
+		TRW(PLUGIN, "failed to add a device descriptor to device init");
 	}
 	conf_dscr_fullsize = *((PUSHORT)pluginfo->dscr_conf + 1);
 	status = UdecxUsbDeviceInitAddDescriptor(pdinit, pluginfo->dscr_conf, conf_dscr_fullsize);
 	if (NT_ERROR(status)) {
-		TRW(VUSB, "failed to add a configuration descriptor to device init");
+		TRW(PLUGIN, "failed to add a configuration descriptor to device init");
 	}
 }
 
@@ -107,7 +132,7 @@ vusb_plugin(pctx_vhci_t vhci, pvhci_pluginfo_t pluginfo)
 
 	status = UdecxUsbDeviceCreate(&pdinit, &attrs, &ude_usbdev);
 	if (NT_ERROR(status)) {
-		TRE(VUSB, "failed to create usb device: %!STATUS!", status);
+		TRE(PLUGIN, "failed to create usb device: %!STATUS!", status);
 		UdecxUsbDeviceInitFree(pdinit);
 		return NULL;
 	}
@@ -116,7 +141,7 @@ vusb_plugin(pctx_vhci_t vhci, pvhci_pluginfo_t pluginfo)
 	opts.Usb20PortNumber = pluginfo->port;
 	status = UdecxUsbDevicePlugIn(ude_usbdev, &opts);
 	if (NT_ERROR(status)) {
-		TRE(VUSB, "failed to plugin a new device %!STATUS!", status);
+		TRE(PLUGIN, "failed to plugin a new device %!STATUS!", status);
 		WdfObjectDelete(ude_usbdev);
 		return NULL;
 	}
@@ -153,7 +178,7 @@ plugin_vusb(pctx_vhci_t vhci, WDFREQUEST req, pvhci_pluginfo_t pluginfo)
 			*pvusb = vusb;
 		}
 		else {
-			TRE(IOCTL, "empty fileobject. setup failed");
+			TRE(PLUGIN, "empty fileobject. setup failed");
 		}
 		vhci->vusbs[pluginfo->port - 1] = vusb;
 		status = STATUS_SUCCESS;

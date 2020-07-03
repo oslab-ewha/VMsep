@@ -12,12 +12,12 @@
         WPP_DEFINE_BIT(MYDRIVER_ALL_INFO)                              \
         WPP_DEFINE_BIT(DRIVER)                                         \
         WPP_DEFINE_BIT(VHCI)                                           \
-        WPP_DEFINE_BIT(VHUB)                                           \
+        WPP_DEFINE_BIT(QUEUE_HC)                                       \
         WPP_DEFINE_BIT(VUSB)                                           \
-        WPP_DEFINE_BIT(QUEUE)                                          \
         WPP_DEFINE_BIT(READ)                                           \
         WPP_DEFINE_BIT(WRITE)                                          \
         WPP_DEFINE_BIT(EP)                                             \
+        WPP_DEFINE_BIT(QUEUE_EP)                                       \
         WPP_DEFINE_BIT(URBR)                                           \
         WPP_DEFINE_BIT(IOCTL)                                          \
         WPP_DEFINE_BIT(PLUGIN)                                         \

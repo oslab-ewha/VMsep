@@ -5,13 +5,21 @@ extern NTSTATUS
 evt_add_vhci(_In_ WDFDRIVER drv, _Inout_ PWDFDEVICE_INIT dinit);
 
 static PAGEABLE VOID
-vhci_EvtDriverContextCleanup(_In_ WDFOBJECT drvobj)
+cleanup_vhci(_In_ WDFOBJECT drvobj)
 {
 	PAGED_CODE();
 
 	TRD(DRIVER, "Enter");
 
 	WPP_CLEANUP(WdfDriverWdmGetDriverObject((WDFDRIVER)drvobj));
+}
+
+static PAGEABLE VOID
+driver_unload(_In_ WDFDRIVER drvobj)
+{
+	UNREFERENCED_PARAMETER(drvobj);
+
+	TRD(DRIVER, "Enter");
 }
 
 INITABLE NTSTATUS
@@ -26,10 +34,11 @@ DriverEntry(_In_ PDRIVER_OBJECT drvobj, _In_ PUNICODE_STRING regpath)
 	TRD(DRIVER, "Enter");
 
 	WDF_OBJECT_ATTRIBUTES_INIT(&attrs);
-	attrs.EvtCleanupCallback = vhci_EvtDriverContextCleanup;
+	attrs.EvtCleanupCallback = cleanup_vhci;
 
 	WDF_DRIVER_CONFIG_INIT(&conf, evt_add_vhci);
 	conf.DriverPoolTag = VHCI_POOLTAG;
+	conf.EvtDriverUnload = driver_unload;
 
 	status = WdfDriverCreate(drvobj, regpath, &attrs, &conf, WDF_NO_HANDLE);
 	if (!NT_SUCCESS(status)) {

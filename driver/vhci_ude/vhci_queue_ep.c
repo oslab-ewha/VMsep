@@ -26,7 +26,7 @@ internal_device_control(_In_ WDFQUEUE queue, _In_ WDFREQUEST req,
 }
 
 static VOID
-io_default(_In_ WDFQUEUE queue, _In_ WDFREQUEST req)
+io_default_ep(_In_ WDFQUEUE queue, _In_ WDFREQUEST req)
 {
 	UNREFERENCED_PARAMETER(queue);
 	UNREFERENCED_PARAMETER(req);
@@ -44,7 +44,7 @@ create_queue_ep(pctx_ep_t ep)
 
 	WDF_IO_QUEUE_CONFIG_INIT(&conf, WdfIoQueueDispatchParallel);
 	conf.EvtIoInternalDeviceControl = internal_device_control;
-	conf.EvtIoDefault = io_default;
+	conf.EvtIoDefault = io_default_ep;
 
 	WDF_OBJECT_ATTRIBUTES_INIT_CONTEXT_TYPE(&attrs, pctx_ep_t);
 	attrs.ParentObject = ep->ude_ep;

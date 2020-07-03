@@ -1,7 +1,7 @@
 #include "vhci_driver.h"
 #include "vhci_hc.tmh"
 
-#define MAX_HUB_PORTS		2
+#define MAX_HUB_PORTS		4
 
 #include "usbip_vhci_api.h"
 
@@ -27,7 +27,7 @@ controller_reset(WDFDEVICE UdecxWdfDevice)
 {
 	UNREFERENCED_PARAMETER(UdecxWdfDevice);
 
-	TRD(VHCI, "controller reset");
+	TRD(VHCI, "Enter");
 }
 
 static PAGEABLE BOOLEAN
@@ -37,10 +37,10 @@ create_ucx_controller(WDFDEVICE hdev)
 	NTSTATUS	status;
 
 	UDECX_WDF_DEVICE_CONFIG_INIT(&conf, controller_query_usb_capability);
-	/* FIXME: is this callback required ? */
-#if 0
 	conf.EvtUdecxWdfDeviceReset = controller_reset;
-#endif
+	/* conf.NumberOfUsb30Ports=1 by UDECX_WDF_DEVICE_CONFIG_INIT */
+	conf.NumberOfUsb20Ports = MAX_HUB_PORTS;
+	/* UdecxWdfDeviceAddUsbDeviceEmulation() will fail if NumberOfUsb20Ports or NumberOfUsb30Ports is 0 */
 	status = UdecxWdfDeviceAddUsbDeviceEmulation(hdev, &conf);
 	if (NT_ERROR(status)) {
 		TRE(VHCI, "failed to create controller: %!STATUS!", status);
@@ -107,7 +107,7 @@ evt_add_vhci(_In_ WDFDRIVER drv, _Inout_ PWDFDEVICE_INIT dinit)
 	pctx_vhci_t	vhci;
 	WDFDEVICE	hdev;
 	WDF_OBJECT_ATTRIBUTES       attrs;
-	NTSTATUS	status = STATUS_UNSUCCESSFUL;
+	NTSTATUS	status;
 
 	UNREFERENCED_PARAMETER(drv);
 
@@ -130,8 +130,10 @@ evt_add_vhci(_In_ WDFDRIVER drv, _Inout_ PWDFDEVICE_INIT dinit)
 		goto out;
 	}
 
-	if (!create_ucx_controller(hdev))
+	if (!create_ucx_controller(hdev)) {
+		status = STATUS_UNSUCCESSFUL;
 		goto out;
+	}
 
 	reg_devintf(hdev);
 
