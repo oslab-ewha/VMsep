@@ -114,6 +114,9 @@ usbip.exe list -l
   - `> usbip.exe attach -r <usbip server ip> -b 2-2`
 - Uninstall driver
   - `PS> usbip.exe uninstall`
+- Disable test signing
+  - `> bcdedit.exe /set TESTSIGNING OFF`
+  - reboot the system to apply
 
 ### Reporting Bug
 - usbip-win is not yet ready for production use. We could find problems with more detailed logs.
